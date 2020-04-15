@@ -48,7 +48,10 @@ hume -c counter-stop -t "$HTASK" -T "$HTAGS" -m "Finished wordpress update cron 
 ```
 
 Then you could check the status of the latest run of the task:
+
+```
 humequery -t WORDPRESS_UPDATE --latest --hostname="webserver"
+```
 
 And you would get the list of every hume event, plus a summary, including 
 ## Ideas for implementation

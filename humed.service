@@ -1,0 +1,12 @@
+[Unit]
+Description=The Hume Daemon
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/lib/humed/humed.py -c /etc/hume/humed.conf
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+Type=notify
+User=humed
+
+[Install]
+WantedBy=default.target

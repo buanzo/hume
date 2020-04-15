@@ -1,0 +1,4 @@
+python_pidfile==3.0.0
+psutil==5.7.0
+pidfile==0.1.1
+pyzmq==19.0.0

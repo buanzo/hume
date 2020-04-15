@@ -52,7 +52,7 @@ Then you could check the status of the latest run of the task:
 ```
 #!/bin/bash
 # echo check status of wordpress_update task for webserver host
-~ $ humequery -t WORDPRESS_UPDATE --latest --hostname="webserver"
+humequery -t WORDPRESS_UPDATE --latest --hostname="webserver"
 ```
 
 And you would get the list of every hume event, plus a summary, including 

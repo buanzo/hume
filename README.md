@@ -24,8 +24,33 @@ dashboard. Yeah. But it gets boring, repetitive and you end up not checking
 the logs. It is a well known sysadmin syndrome.
 
 So, write those scripts adding hume commands. Something like this:
+```
+#!/bin/bash
+# This script updates wordpress core, plugins and themes
+# on a number of different directories.
+wpcli='/usr/local/bin/wp'
 
+# Maybe hume could read this variables
+HTASK="WORDPRESS_UPDATE"
+HTAGS="wordpress,cron,updates"
 
+hume -c counter-start -t "$HUME_TASK" -T wordpress,cron,updates -m "Starting wordpress update cron process"
+for dir in "/var/www/site1/htdocs" "/var/www/site2/htdocs" "/var/www/site3/htdocs"
+do
+	hume -t "$HTASK" -T "$HTAGS" -L info -m "Updating in $dir"
+        cd $dir || hume -t "$HTASK" -T "$HTAGS" -L error -m "$dir does not exist"
+        $wpcli core update || hume -t "$HTASK" -T "$HTAGS" -L error -m "Core update error in $dir"
+        $wpcli plugin update --all || hume -t "$HTASK" -T "$HTAGS" -L error -m "Plugins update error in $dir"
+        $wpcli theme update --all || hume -t "$HTASK" -T "$HTAGS" -L error -m "Themes update error in $dir"
+	hume -t "$HTASK" -T "$HTAGS" -L info -m "Update process for $dir finished"
+done
+hume -c counter-stop -t "$HTASK" -T "$HTAGS" -m "Finished wordpress update cron task"
+```
+
+Then you could check the status of the latest run of the task:
+humequery -t WORDPRESS_UPDATE --latest --hostname="webserver"
+
+And you would get the list of every hume event, plus a summary, including 
 ## Ideas for implementation
 
 hume uses zeromq over loopback to connecto to a hume daemon on the same

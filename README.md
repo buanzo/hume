@@ -95,6 +95,8 @@ Alternative: Use pypika to build sql queries using high level
 abstractions - https://github.com/kayak/pypika and
 pydal to run the queries thru an engine agnostic layer https://github.com/web2py/pydal
 
+# Idea for a dashboard: instead, become a fluentd data source: https://docs.fluentd.org/language-bindings/python
+
 Components:
 
 hume - called from within scripts. writes to a local publish queue. maybe a fallback to sqlite that humed can read on startup?

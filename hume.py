@@ -8,20 +8,31 @@ import argparse
 import json
 from pprint import pprint
 
+from humetools import NotImplementedAction
+
+
 class Hume():
-    def __init__(self,args):
+    def __init__(self, args):
         # self.config = {'url': 'ipc:///tmp/hume.sock'}
         self.config = {'url': 'tcp://127.0.0.1:198'}
-        
+
         # args
         self.args = args
-        
-        # Object to send
+
+        # Prepare object to send
+        # Might end up moving some of this stuff around
+        # But I like focusing blocks to be developed
+        # in such a way that the code can grow organically
+        # and be coder-assistive
         self.reqObj = {}
         # To store information related to how hume was executed
         self.reqObj['process'] = {}
         # Hume-specific information
         self.reqObj['hume'] = {}
+        self.reqObj['hume']['level'] = args.level
+        self.reqObj['hume']['msg'] = args.msg
+        self.reqObj['hume']['tags'] = args.tags
+        self.reqObj['hume']['task'] = args.task
 
         if self.args.append_pstree:
             self.reqObj['process']['tree'] = self.get_pstree()
@@ -31,10 +42,13 @@ class Hume():
             self.reqObj['process']['line_number'] = ln
         del ln
 
-        if (len(self.reqObj['process'])==0):
+        if (len(self.reqObj['process']) == 0):
             del(self.reqObj['process'])
 
         # TODO: process args and add items to reqObj
+        pprint(self.args)
+
+        #
         pprint(self.reqObj)
 
         print(self.config['url'])
@@ -46,8 +60,8 @@ class Hume():
                 print('socket not writable or other error')
                 sys.exit(1)
 
-    def test_unix_socket(self,url):
-        path = url.replace('ipc://','')
+    def test_unix_socket(self, url):
+        path = url.replace('ipc://', '')
         if not os.path.exists(path):
             return(False)
         mode = os.stat(path).st_mode
@@ -59,13 +73,14 @@ class Hume():
             return(True)
         return(False)
 
-    def send(self,gpg_encrypt_to=None):
-        # TODO: If we were to encrypt, we would encapsulate self.reqObj to a special structure:
+    def send(self, encrypt_to=None):
+        # TODO: If we were to encrypt, we would encapsulate
+        # self.reqObj to a special structure:
         # {'payload': ENCRYPTED_ASCII_ARMORED_CONTENT,
         #  'encrypted': True}
         # or something like that
         print('connect')
-        if gpg_encrypt_to is None:
+        if encrypt_to is None:
             HUME = self.reqObj
         else:
             HUME = self.encrypt(gpg_encrypt_to)
@@ -84,7 +99,8 @@ class Hume():
         try:
             x = sock.send_string(json.dumps(self.reqObj))
         except zmq.ZMQError as exc:
-            print("\e[1;33mEXCEPTION:\e[0;37m{}".format(exc))
+            msg = "\033[1;33mEXCEPTION:\033[0;37m{}"
+            print(msg.format(exc))
             sys.exit(3)
         print(x)
         print('fin')
@@ -102,7 +118,7 @@ class Hume():
             parent = psutil.Process(parent.ppid())
             h = h+1
         return(ps_tree)
-    
+
     def get_caller(self):
         me = psutil.Process()
         parent = psutil.Process(me.ppid())
@@ -112,18 +128,22 @@ class Hume():
     def get_lineno(self):
         try:
             return(os.environ['LINENO'])
-        except:
-            # TODO: add stderr warning about no LINENO    
+        except Exception:
+            # TODO: add stderr warning about no LINENO
             return(None)
+
 
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument("-L", "--level",
                         choices=['ok', 'warn', 'error', 'info', 'debug'],
                         default="info",
-                        help="Specifies level of update to send, defaults to 'info'")    
+                        help="Level of update to send, defaults to 'info'")
     parser.add_argument("-c", "--cmd",
-                        choices=['counter-start', 'counter-pause', 'counter-stop', 'counter-reset'],
+                        choices=['counter-start',
+                                 'counter-pause',
+                                 'counter-stop',
+                                 'counter-reset'],
                         default='',
                         required=False,
                         help="[OPTIONAL] Command to attach to the update.")
@@ -133,16 +153,21 @@ def run():
     parser.add_argument("-t", "--task",
                         required=False,
                         default='',
-                        help="[OPTIONAL] Task identifier, can be anything, but best to think it out.")
-    parser.add_argument('-a','--append-pstree', action='store_true',
+                        help="[OPTIONAL] Task name, for example BACKUPTASK.")
+    parser.add_argument('-a', '--append-pstree',
+                        action='store_true',
                         help="Append process calling tree")
-    parser.add_argument('-T','--tags', type=lambda arg: arg.split(','),
+    parser.add_argument('-T', '--tags',
+                        type=lambda arg: arg.split(','),
                         help="Comma-separated list of tags")
-    parser.add_argument('-e','--encrypt-to',
+    parser.add_argument('-e', '--encrypt-to',
+                        default=None,
+                        action=NotImplementedAction,
+                        dest='encrypt_to',
                         help="[OPTIONAL] Encrypt to this gpg pubkey id")
     args = parser.parse_args()
-    pprint(args)
-    Hume(args).send()
+    Hume(args).send(encrypt_to=args.encrypt_to)
+
 
 if __name__ == '__main__':
     run()

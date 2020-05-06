@@ -10,6 +10,16 @@ tools he likes, and still be able to structurally share and enhance the data
 that comes out of them in a central location, hume provides the same for
 sysadmins, devops teams, etc.
 
+# CURRENT STATUS / NEEDS
+
+hume client works and can be used in sysadmin/cron scripts
+
+humed works in localhost mode only, but master/slave ideas have been
+considered (see below) - There is NO QUERY TOOL, but you can get data off
+the humed.sqlite3 database
+
+We need a UI/UX designer/developer, maybe a REST API for querytools.
+
 # THIS IS A WORK IN PROGRESS
 
 Hume will include a dashboard for queries. If someone writes it. I suck at
@@ -80,6 +90,27 @@ current-data storage and querying.
 
 But first lets make a useful, working prototype.
 
+
+## Components
+
+# hume
+
+called from within scripts.  writes to a local publish queue.  maybe a
+fallback to sqlite that humed can read on startup?
+
+# humed
+
+its the local publish queue.  consumes messages, applies
+filtering/preprocessing, security, etc.  Can be set to master or slave mode. 
+This way the hume CLI tool will just push gather some info, then push zmq
+messages to localhost humed.  if localhost humed is a slave, it will have a
+thread to send pending hume messages to the master.  query tool should work
+against slave or master.
+
+# TO DEFINE: dashboard or fluentd integration
+
+Idea for a dashboard: instead, become a fluentd data source: https://docs.fluentd.org/language-bindings/python
+
 ## DEVELOPMENT NOTES
 
 # Define Basic CLI usage
@@ -87,21 +118,6 @@ But first lets make a useful, working prototype.
 * add events to process --warn, --info, --error, --debug
 * event flagging for process timeline (instead of starting/stopping the watch, as every event including start/stop of process will include timestamp, we use event flagging to indicate events in the process timeline)
 * stop process / deregister
-* Define required tables and implement sqlalchemy
-using ORM https://docs.sqlalchemy.org/en/13/orm/tutorial.html
-using core https://docs.sqlalchemy.org/en/13/core/tutorial.html
 
-Alternative: Use pypika to build sql queries using high level
-abstractions - https://github.com/kayak/pypika and
-pydal to run the queries thru an engine agnostic layer https://github.com/web2py/pydal
-
-# Idea for a dashboard: instead, become a fluentd data source: https://docs.fluentd.org/language-bindings/python
-
-Components:
-
-hume - called from within scripts. writes to a local publish queue. maybe a fallback to sqlite that humed can read on startup?
-humed - its the local publish queue. consumes messages, applies filtering/preprocessing, security and pushes to CENTRAL COMMAND
-central command - probably a redis instance that receives messages from humed. workers take the different messages and do
-stuff
-
-# TODO: mention export LINENO before calling hume
+# Miscelaneous
+* mention export LINENO before calling hume

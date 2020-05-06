@@ -4,17 +4,20 @@ import json
 import pidfile
 import sqlite3
 import datetime
-#import systemd.daemon
+# import systemd.daemon
 from pprint import pprint
 
-DEBUG=True  # TODO: set to False :P
-DBPATH='/var/log/humed.sqlite3'  # hume is VERY related to logs
-                                 # better /var/humed/humed.sqlite3 ?
+DEBUG = True  # TODO: set to False :P
+# hume is VERY related to logs
+# better /var/humed/humed.sqlite3 ?
+DBPATH = '/var/log/humed.sqlite3'
 if DEBUG:
-    DBPATH='./humed.sqlite3'
+    DBPATH = './humed.sqlite3'
+
 
 class Humed():
-    def __init__(self,listen_url='tcp://127.0.0.1:198'):
+    def __init__(self,
+                 listen_url='tcp://127.0.0.1:198'):
         self.config = {}
         self.config['listen_url'] = listen_url
         if self.prepare_db() is False:
@@ -92,11 +95,11 @@ class Humed():
         for item in pendientes:
             # TODO: send to master-hume
             print(item)
-            #if sent ok then:
-            #self.transfer_ok(archivo=archivo)
+            # if sent ok then:
+            # self.transfer_ok(archivo=archivo)
             # if error return(False)
         return(True)
-    
+
     def run(self):
         # Humed main loop
         # TODO: 1 - Initiate process-pending-humes-thread
@@ -110,14 +113,14 @@ class Humed():
                 hume = json.loads(sock.recv())
             except Exception as ex:
                 print(ex)
-                print('Seems we cant json parse the received message. Mmmmm...')
+                print('Cannot json-loads the received message. Mmmmm...')
             # 2b - insert it into transfers
             self.add_transfer(hume)
-            #pprint(self.list_transfers(pending=True))
+            # pprint(self.list_transfers(pending=True))
         # TODO: 2c - log errors and rowids
         # TODO: deal with exits/breaks
 
-        
+
 def main():
     print('Starting process')
     try:
@@ -133,10 +136,11 @@ def main():
     humed = Humed()
 
     # TODO: Tell systemd we are ready
-    #systemd.daemon.notify('READY=1')
+    # systemd.daemon.notify('READY=1')
 
     print('Ready. serving...')
     humed.run()
+
 
 if __name__ == '__main__':
     # TODO: Add argparse and have master and slave modes

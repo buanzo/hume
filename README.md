@@ -28,7 +28,7 @@ process, grouped by hostname. Search by tags, etc.
 
 ## What will hume be?
 
-You have some cron scripts. They need to run correctly, and you need to know
+Imagine this: You have some cron scripts. They need to run correctly, and you need to know
 if anything happens. You usually check logs via email or some cool
 dashboard. Yeah. But it gets boring, repetitive and you end up not checking
 the logs. It is a well known sysadmin syndrome.
@@ -66,6 +66,8 @@ humequery -t WORDPRESS_UPDATE --latest --hostname="webserver"
 ```
 
 And you would get the list of every hume event, plus a summary, including 
+
+# Implementation, concepts, ideas
 ## Ideas for implementation
 
 hume uses zeromq over loopback to connecto to a hume daemon on the same
@@ -91,14 +93,14 @@ current-data storage and querying.
 But first lets make a useful, working prototype.
 
 
-## Components
+# Components
 
-# hume
+## hume
 
 called from within scripts.  writes to a local publish queue.  maybe a
 fallback to sqlite that humed can read on startup?
 
-# humed
+## humed
 
 its the local publish queue.  consumes messages, applies
 filtering/preprocessing, security, etc.  Can be set to master or slave mode. 
@@ -107,17 +109,17 @@ messages to localhost humed.  if localhost humed is a slave, it will have a
 thread to send pending hume messages to the master.  query tool should work
 against slave or master.
 
-# TO DEFINE: dashboard or fluentd integration
+## TO DEFINE: dashboard or fluentd integration
 
 Idea for a dashboard: instead, become a fluentd data source: https://docs.fluentd.org/language-bindings/python
 
-## DEVELOPMENT NOTES
+# DEVELOPMENT NOTES
 
-# Define Basic CLI usage
+## Define Basic CLI usage
 * register and start process execution
 * add events to process --warn, --info, --error, --debug
 * event flagging for process timeline (instead of starting/stopping the watch, as every event including start/stop of process will include timestamp, we use event flagging to indicate events in the process timeline)
 * stop process / deregister
 
-# Miscelaneous
+## Miscelaneous
 * mention export LINENO before calling hume

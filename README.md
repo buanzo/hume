@@ -44,7 +44,7 @@ wpcli='/usr/local/bin/wp'
 HTASK="WORDPRESS_UPDATE"
 HTAGS="wordpress,cron,updates"
 
-hume -c counter-start -t "$HUME_TASK" -T wordpress,cron,updates -m "Starting wordpress update cron process"
+hume -c counter-start -t "$HTASK" -T "$HTAGS" -m "Starting wordpress update cron process"
 for dir in "/var/www/site1/htdocs" "/var/www/site2/htdocs" "/var/www/site3/htdocs"
 do
 	hume -t "$HTASK" -T "$HTAGS" -L info -m "Updating in $dir"

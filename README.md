@@ -95,8 +95,8 @@ get a wordpress_backup bash script that's only the required hume tasknames,
 required informational stages.  All comments.  You just write the script to
 follow the devops pattern.
 
-* watchdog command: 'This task needs to run daily' -> cron failed?  no hume
-command that lets the watchdog now it is effectively running daily.
+* watchdog command: 'This task needs to run daily' -> cron failed? hume
+command that lets the watchdog know it is effectively running daily.
 
 
 But first lets make a useful, working prototype.

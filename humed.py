@@ -4,8 +4,11 @@ import json
 import pidfile
 import sqlite3
 import datetime
+import argparse
 # import systemd.daemon
 from pprint import pprint
+# The Confuse library is awesome.
+import confuse
 
 DEBUG = True  # TODO: set to False :P
 # hume is VERY related to logs
@@ -14,12 +17,24 @@ DBPATH = '/var/log/humed.sqlite3'
 if DEBUG:
     DBPATH = './humed.sqlite3'
 
+# Location of json config file
+# The good thing about WSL is that we actually have /etc
+CONFIGPATH = '/etc/humed/humed.json'
+if DEBUG:
+    CONFIGPATH = './humed.json'
+
+# Configuration template
+# See:
+# https://github.com/beetbox/confuse/blob/master/example/__init__.py
+config_template = {
+    'listen_url': str,
+    'transfer_method': confuse.OneOf(['fluentd', 'logstash', 'kant']),
+}
+
 
 class Humed():
-    def __init__(self,
-                 listen_url='tcp://127.0.0.1:198'):
-        self.config = {}
-        self.config['listen_url'] = listen_url
+    def __init__(self, config):
+        self.config = config
         if self.prepare_db() is False:
             sys.exit('Humed: Error preparing database')
 
@@ -105,7 +120,9 @@ class Humed():
         # TODO: 1 - Initiate process-pending-humes-thread
         # 2 - Bind and Initiate loop
         sock = zmq.Context().socket(zmq.PULL)
-        sock.bind(self.config['listen_url'])
+        url = self.config['listen_url'].get()
+        print("Binding to '{}'".format(url))
+        sock.bind(url)
         # 2a - Await hume message over zmp
         while True:
             hume = {}
@@ -116,13 +133,27 @@ class Humed():
                 print('Cannot json-loads the received message. Mmmmm...')
             # 2b - insert it into transfers
             self.add_transfer(hume)
-            # pprint(self.list_transfers(pending=True))
+            pprint(self.list_transfers(pending=True))
         # TODO: 2c - log errors and rowids
         # TODO: deal with exits/breaks
 
 
 def main():
-    print('Starting process')
+    # First, parse configuration
+    config = confuse.Configuration('humed')
+    # Config defaults
+    config['listen_url'] = 'tcp://127.0.0.1:198'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--listen_url',
+                        help='Listening url for humed zeromq')
+#                        default='tcp://127.0.0.1:198')
+    args = parser.parse_args()
+    config.set_args(args)
+    print('Reading configuration from {}/{}'.format(config.config_dir(),
+                                                    confuse.CONFIG_FILENAME))
+    print('-----[ CONFIG DUMP ]-----')
+    print(config.dump())
+    print('---[ CONFIG DUMP END ]---')
     try:
         with pidfile.PIDFile():
             print('Process started')
@@ -132,8 +163,7 @@ def main():
         sys.exit(1)
 
     # Initialize Stuff
-    print('initializing hume daemon')
-    humed = Humed()
+    humed = Humed(config=config)
 
     # TODO: Tell systemd we are ready
     # systemd.daemon.notify('READY=1')

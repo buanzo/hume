@@ -118,9 +118,21 @@ messages to localhost humed.  if localhost humed is a slave, it will have a
 thread to send pending hume messages to the master.  query tool should work
 against slave or master.
 
-## TO DEFINE: dashboard or fluentd integration
+## Transfer Methods
 
-Idea for a dashboard: instead, become a fluentd data source: https://docs.fluentd.org/language-bindings/python
+Humed will support logstash, fluentd and kant.
+
+Development will commence with logstash, then kant and finally fluentd,
+because I am not finding good fluent client/agent implementations in
+python3.
+
+The logstash support will use python-logstash-async.
+
+Kant will be our simple alternative to the aforementioned technologies, with included
+dashboard.
+
+A querytool for local humed instances (and potentially/desirably for kant)
+will be developed.
 
 # DEVELOPMENT NOTES
 

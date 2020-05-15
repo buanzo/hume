@@ -1,6 +1,6 @@
 listen_url: tcp://127.0.0.1:198
-transfer_method: fluentd
-fluentd:
+transfer_method: logstash
+logstash:
     host: 127.0.0.1
     port: 24224
     

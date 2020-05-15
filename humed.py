@@ -11,6 +11,7 @@ from pprint import pprint
 import confuse
 
 DEBUG = True  # TODO: set to False :P
+
 # hume is VERY related to logs
 # better /var/humed/humed.sqlite3 ?
 DBPATH = '/var/log/humed.sqlite3'
@@ -23,18 +24,35 @@ CONFIGPATH = '/etc/humed/humed.json'
 if DEBUG:
     CONFIGPATH = './humed.json'
 
+# Determine available transfer_methods
+TRANSFER_METHODS = ['kant']  # TODO: kant will be our own
+
+try:
+    from logstash_async.handler import AsynchronousLogstashHandler
+except ImportError:
+    # logstash not available
+    pass
+else:
+    # You gotta love try/except/else/finally
+    TRANSFER_METHODS.append('logstash')
+
+# TODO: add determination for fluentd-logger, we still need to find a GOOD
+# implementation
+
 # Configuration template
 # See:
 # https://github.com/beetbox/confuse/blob/master/example/__init__.py
 config_template = {
     'listen_url': str,
-    'transfer_method': confuse.OneOf(['fluentd', 'logstash', 'kant']),
+    'transfer_method': confuse.OneOf(TRANSFER_METHODS),
 }
 
 
 class Humed():
     def __init__(self, config):
-        self.config = config
+        # We will only expose config if needed
+        # self.config = config
+        self.listen_url = config['listen_url'].get()
         if self.prepare_db() is False:
             sys.exit('Humed: Error preparing database')
 
@@ -120,9 +138,8 @@ class Humed():
         # TODO: 1 - Initiate process-pending-humes-thread
         # 2 - Bind and Initiate loop
         sock = zmq.Context().socket(zmq.PULL)
-        url = self.config['listen_url'].get()
-        print("Binding to '{}'".format(url))
-        sock.bind(url)
+        print("Binding to '{}'".format(self.listen_url))
+        sock.bind(self.listen_url)
         # 2a - Await hume message over zmp
         while True:
             hume = {}
@@ -146,13 +163,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--listen_url',
                         help='Listening url for humed zeromq')
-#                        default='tcp://127.0.0.1:198')
     args = parser.parse_args()
     config.set_args(args)
     print('Reading configuration from {}/{}'.format(config.config_dir(),
                                                     confuse.CONFIG_FILENAME))
     print('-----[ CONFIG DUMP ]-----')
     print(config.dump())
+    print('Available Transfer Methods: {}'.format(TRANSFER_METHODS))
     print('---[ CONFIG DUMP END ]---')
     try:
         with pidfile.PIDFile():
@@ -162,7 +179,7 @@ def main():
         print('Exiting')
         sys.exit(1)
 
-    # Initialize Stuff
+    # Initialize Stuff - configuration will be tested in Humed __init__
     humed = Humed(config=config)
 
     # TODO: Tell systemd we are ready

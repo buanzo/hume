@@ -33,7 +33,7 @@ class Hume():
         self.reqObj['hume']['msg'] = args.msg
         self.reqObj['hume']['tags'] = args.tags
         self.reqObj['hume']['task'] = args.task
-
+        self.reqObj['hume']['humecmd'] = args.humecmd
         if self.args.append_pstree:
             self.reqObj['process']['tree'] = self.get_pstree()
 
@@ -46,17 +46,10 @@ class Hume():
             del(self.reqObj['process'])
 
         # TODO: process args and add items to reqObj
-        pprint(self.args)
-
-        #
-        pprint(self.reqObj)
-
         print(self.config['url'])
 
         if self.config['url'].startswith('ipc://'):
-            if self.test_unix_socket(config['url']):
-                print('socket ok')
-            else:
+            if not self.test_unix_socket(config['url']):
                 print('socket not writable or other error')
                 sys.exit(1)
 
@@ -79,7 +72,6 @@ class Hume():
         # {'payload': ENCRYPTED_ASCII_ARMORED_CONTENT,
         #  'encrypted': True}
         # or something like that
-        print('connect')
         if encrypt_to is None:
             HUME = self.reqObj
         else:
@@ -95,15 +87,12 @@ class Hume():
         except zmq.ZMQError as exc:
             print(exc)
             sys.exit(2)
-        print('send_string')
         try:
             x = sock.send_string(json.dumps(self.reqObj))
         except zmq.ZMQError as exc:
             msg = "\033[1;33mEXCEPTION:\033[0;37m{}"
             print(msg.format(exc))
             sys.exit(3)
-        print(x)
-        print('fin')
         return(None)
 
     def get_pstree(self):  # FIX: make better version
@@ -136,15 +125,16 @@ class Hume():
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument("-L", "--level",
-                        choices=['ok', 'warn', 'error', 'info', 'debug'],
+                        choices=['ok', 'warn', 'error', 'info', 'critical', 'debug'],
                         default="info",
                         help="Level of update to send, defaults to 'info'")
-    parser.add_argument("-c", "--cmd",
+    parser.add_argument("-c", "--hume-cmd",
                         choices=['counter-start',
                                  'counter-pause',
                                  'counter-stop',
                                  'counter-reset'],
                         default='',
+                        dest='humecmd',
                         required=False,
                         help="[OPTIONAL] Command to attach to the update.")
     parser.add_argument("-m", "--msg",

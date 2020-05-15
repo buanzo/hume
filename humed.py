@@ -1,6 +1,9 @@
 #!/usr/bin/python3
+import logging
+import sys
 import zmq
 import json
+import socket
 import pidfile
 import sqlite3
 import datetime
@@ -45,6 +48,10 @@ else:
 config_template = {
     'listen_url': str,
     'transfer_method': confuse.OneOf(TRANSFER_METHODS),
+    'logstash': {
+        'host': confuse.String(),
+        'port': confuse.Integer(),
+    },
 }
 
 
@@ -53,11 +60,21 @@ class Humed():
         # We will only expose config if needed
         # self.config = config
         self.listen_url = config['listen_url'].get()
+        self.transfer_method = config['transfer_method'].get()
+        self.transfer_method_args = config[self.transfer_method].get()
+        # TODO: improve
+        self.logger = logging.getLogger('humed-{}'.format(self.transfer_method))
+        self.logger.setLevel(logging.INFO)
+        if self.transfer_method is 'logstash':
+            host = self.transfer_method_args['host'].get()
+            port = self.transfer_method_args['host'].get()
+            self.logger.addHandler(AsynchronousLogstashHandler(host, port, database_path='logstash.db'))
+        # no 'else' because confuse takes care of validating config options
+
         if self.prepare_db() is False:
             sys.exit('Humed: Error preparing database')
 
     def prepare_db(self):
-        print('Preparing DB')
         try:
             self.conn = sqlite3.connect(DBPATH)
         except Exception as ex:
@@ -67,13 +84,11 @@ class Humed():
         try:
             sql = '''CREATE TABLE IF NOT EXISTS
                      transfers (ts timestamp, sent boolean, hume text)'''
-            print(sql)
             self.cursor.execute(sql)
             self.conn.commit()
         except Exception as ex:
             print(ex)
             return(False)
-        print('DB OK')
         return(True)
 
     def transfer_ok(self, rowid):
@@ -121,24 +136,76 @@ class Humed():
             lista.append(row)
         return(lista)
 
-    def processs_transfers(self):
+    def process_transfers(self):
         # TODO: The master/slave thingy...
         pendientes = self.list_transfers(pending=True)
-        pprint(pendientes)
         for item in pendientes:
             # TODO: send to master-hume
-            print(item)
+            if self.transfer_method == 'logstash':
+                self.logstash(item=item)
             # if sent ok then:
             # self.transfer_ok(archivo=archivo)
             # if error return(False)
         return(True)
 
+    def logstash(self,item=None):
+        if item is None:
+            return()  # FIX: should not happen
+        rowid = item[0]
+        ts = item[1]
+        try:
+            humepkt = json.loads(item[3])
+        except Exception as ex:
+            return()  # FIX: malformed json at this stage? mmm
+        hume = humepkt['hume']
+        if 'process' in humepkt.keys():  # This data is optional in hume (-a)
+            process = humepkt['process']
+        else:
+            process = None
+        # Extract info from hume to prepare logstash call
+        # TODO: implement configuration for "LOG FORMAT" to use when sending
+        level = hume['level']
+        msg = hume['msg']
+        task = hume['task']
+        tags = hume['tags']
+        humecmd = hume['humecmd']
+        # hostname
+        hostname = socket.getfqdn()  # FIX: add a hostname configuration keyword
+        # extra field for logstash message
+        extra = {
+            'tags': tags,
+            'task': task,
+            'humelevel': level,
+            'humecmd': humecmd
+        }
+        if process is not None:
+            extra['process'] = process
+        # Hume level does not relate completely, because 'ok' is not 
+        # a syslog severity, closest is info but...  TODO: think about this
+        # hume level -> syslog severity 
+        # ----------------------------
+        # ok         -> info
+        # info       -> info
+        # warn       -> warning
+        # error      -> error
+        # critical   -> critical
+        # debug      -> debug
+        if level == 'ok' or level == 'info':
+            # https://python-logstash-async.readthedocs.io/en/stable/usage.html#
+            self.logger.info('hume({}): {}'.format(hostname, msg), extra=extra)
+        elif level == 'warn':
+            self.logger.warning('hume({}) {}'.format(hostname, msg), extra=extra)
+        elif level == 'error':
+            self.logger.error('hume({}): {}'.format(hostname, msg), extra=extra)
+        elif level == 'critical':
+            self.logger.critical('hume({}): {}'.format(hostname, msg), extra=extra)
+        elif level == 'debug':
+            self.logger.debug('hume({}): {}'.format(hostname, msg), extra=extra)
+
     def run(self):
         # Humed main loop
-        # TODO: 1 - Initiate process-pending-humes-thread
-        # 2 - Bind and Initiate loop
         sock = zmq.Context().socket(zmq.PULL)
-        print("Binding to '{}'".format(self.listen_url))
+        # print("Binding to '{}'".format(self.listen_url))
         sock.bind(self.listen_url)
         # 2a - Await hume message over zmp
         while True:
@@ -147,10 +214,13 @@ class Humed():
                 hume = json.loads(sock.recv())
             except Exception as ex:
                 print(ex)
-                print('Cannot json-loads the received message. Mmmmm...')
-            # 2b - insert it into transfers
-            self.add_transfer(hume)
-            pprint(self.list_transfers(pending=True))
+                print('Cannot json-loads the received message. notgood')
+            except KeyboardInterrupt as kb:
+                print('CTRL-C called, exiting now')
+                sys.exit(255)
+            else:
+                self.add_transfer(hume)
+                self.process_transfers()
         # TODO: 2c - log errors and rowids
         # TODO: deal with exits/breaks
 

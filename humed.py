@@ -23,12 +23,6 @@ DBPATH = '/var/log/humed.sqlite3'
 if DEBUG:
     DBPATH = './humed.sqlite3'
 
-# Location of json config file
-# The good thing about WSL is that we actually have /etc
-CONFIGPATH = '/etc/humed/humed.json'
-if DEBUG:
-    CONFIGPATH = './humed.json'
-
 # Basic list of TRANSFER_METHODS
 # We extend TRANSFER_METHODS by testing for optional modules
 TRANSFER_METHODS = ['syslog', 'remote_syslog', 'kant']  # TODO: kant will be our own

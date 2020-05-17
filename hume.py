@@ -7,7 +7,7 @@ import psutil
 import argparse
 import json
 from pprint import pprint
-
+from datetime import datetime
 from humetools import NotImplementedAction
 
 
@@ -34,6 +34,7 @@ class Hume():
         self.reqObj['hume']['tags'] = args.tags
         self.reqObj['hume']['task'] = args.task
         self.reqObj['hume']['humecmd'] = args.humecmd
+        self.reqObj['hume']['timestamp'] = self.get_timestamp()
         if self.args.append_pstree:
             self.reqObj['process']['tree'] = self.get_pstree()
 
@@ -120,6 +121,9 @@ class Hume():
         except Exception:
             # TODO: add stderr warning about no LINENO
             return(None)
+
+    def get_timestamp(self):
+        return(datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f'))
 
 
 def run():

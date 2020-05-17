@@ -8,12 +8,14 @@ import pidfile
 import sqlite3
 import datetime
 import argparse
+import socket
+from logging.handlers import SysLogHandler
 # import systemd.daemon
 from pprint import pprint
 # The Confuse library is awesome.
 import confuse
 
-DEBUG = True  # TODO: set to False :P
+DEBUG = False  # TODO: set to False :P
 
 # hume is VERY related to logs
 # better /var/humed/humed.sqlite3 ?
@@ -27,11 +29,13 @@ CONFIGPATH = '/etc/humed/humed.json'
 if DEBUG:
     CONFIGPATH = './humed.json'
 
-# Determine available transfer_methods
-TRANSFER_METHODS = ['kant']  # TODO: kant will be our own
+# Basic list of TRANSFER_METHODS
+# We extend TRANSFER_METHODS by testing for optional modules
+TRANSFER_METHODS = ['syslog', 'remote_syslog', 'kant']  # TODO: kant will be our own
 
+# availability test for logstash (see optional_requirements.txt)
 try:
-    from logstash_async.handler import AsynchronousLogstashHandler
+    from logstash_async.handler import AsynchronousLogstashHandler as AsyncLSH
 except ImportError:
     # logstash not available
     pass
@@ -45,9 +49,14 @@ else:
 # Configuration template
 # See:
 # https://github.com/beetbox/confuse/blob/master/example/__init__.py
-config_template = {
-    'listen_url': str,
+config_template = {  # TODO: add debug. check confuse.Bool()
+    'listen_url': confuse.String(),
     'transfer_method': confuse.OneOf(TRANSFER_METHODS),
+    'remote_syslog': {
+        'server': confuse.String(),
+        'proto': confuse.OneOf(['tcp','udp']),
+        'port': confuse.Integer(),
+    },
     'logstash': {
         'host': confuse.String(),
         'port': confuse.Integer(),
@@ -59,6 +68,7 @@ class Humed():
     def __init__(self, config):
         # We will only expose config if needed
         # self.config = config
+        self.debug = config['debug'].get()
         self.listen_url = config['listen_url'].get()
         self.transfer_method = config['transfer_method'].get()
         self.transfer_method_args = config[self.transfer_method].get()
@@ -68,7 +78,20 @@ class Humed():
         if self.transfer_method is 'logstash':
             host = self.transfer_method_args['host'].get()
             port = self.transfer_method_args['host'].get()
-            self.logger.addHandler(AsynchronousLogstashHandler(host, port, database_path='logstash.db'))
+            self.logger.addHandler(AsyncLSH(host, port, database_path='logstash.db'))
+        elif self.transfer_method is 'remote_syslog':
+            server = self.config['remote_syslog']['server'].get()
+            port = self.config['remote_syslog']['port'].get()
+            proto = self.config['remote_syslog']['proto'].get()
+            sa = (server,port)
+            if proto is 'udp':
+                self.logger.addHandler(SysLogHandler(address=sa,
+                                                     socktype=socket.SOCK_DGRAM))
+            elif proto is 'tcp':
+                self.logger.addHandler(SysLogHandler(address=sa,
+                                                     socktype=socket.SOCK_STREAM))
+        elif self.transfer_method is 'syslog':
+            self.logger.addHandler(logging.handlers.SysLogHandler())
         # no 'else' because confuse takes care of validating config options
 
         if self.prepare_db() is False:
@@ -143,6 +166,8 @@ class Humed():
             # TODO: send to master-hume
             if self.transfer_method == 'logstash':
                 self.logstash(item=item)
+            elif self.transfer_method == 'syslog':
+                self.syslog(item=item)
             # if sent ok then:
             # self.transfer_ok(archivo=archivo)
             # if error return(False)
@@ -169,6 +194,7 @@ class Humed():
         task = hume['task']
         tags = hume['tags']
         humecmd = hume['humecmd']
+        timestamp = hume['timestamp']
         # hostname
         hostname = socket.getfqdn()  # FIX: add a hostname configuration keyword
         # extra field for logstash message
@@ -176,7 +202,8 @@ class Humed():
             'tags': tags,
             'task': task,
             'humelevel': level,
-            'humecmd': humecmd
+            'humecmd': humecmd,
+            'timestamp': timestamp
         }
         if process is not None:
             extra['process'] = process
@@ -229,10 +256,16 @@ def main():
     # First, parse configuration
     config = confuse.Configuration('humed')
     # Config defaults
-    config['listen_url'] = 'tcp://127.0.0.1:198'
+    config['listen_url'] = 'tcp://localhost:198'
+    config['remote_syslog']['address'] = 'localhost'
+    config['remote_syslog']['proto'] = 'udp'
+    config['remote_syslog']['port'] = 514
     parser = argparse.ArgumentParser()
     parser.add_argument('--listen_url',
                         help='Listening url for humed zeromq')
+    config['debug'] = DEBUG
+    parser.add_argument('--debug',
+                        help='Enable debug')
     args = parser.parse_args()
     config.set_args(args)
     print('Reading configuration from {}/{}'.format(config.config_dir(),

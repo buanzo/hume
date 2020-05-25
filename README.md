@@ -1,39 +1,14 @@
 # hume
-
-Hume is an agnostic system administration tool/framework.  It is in fact a
-command line tool to call from your shell scripts to centrally report a
-certain process/script status, share a piece of data, etc. Read on!
-
-Every sysadmin is a universe.  The same way there are awesome tools for
-pentesters such as faraday, which allows each pentester to work using the
-tools he likes, and still be able to structurally share and enhance the data
-that comes out of them in a central location, hume provides the same for
-sysadmins, devops teams, etc.
-
-# CURRENT STATUS / NEEDS
-
-hume client works and can be used in sysadmin/cron scripts
-
-humed works in localhost mode only, but master/slave ideas have been
-considered (see below) - There is NO QUERY TOOL, but you can get data off
-the humed.sqlite3 database
-
-We need a UI/UX designer/developer, maybe a REST API for querytools.
-
-# THIS IS A WORK IN PROGRESS
-
-Hume will include a dashboard for queries. If someone writes it. I suck at
-html5/js. But the command line tool will allow you to get status on a
-process, grouped by hostname. Search by tags, etc.
-
-## What will hume be?
-
 Imagine this: You have some cron scripts. They need to run correctly, and you need to know
 if anything happens. You usually check logs via email or some cool
 dashboard. Yeah. But it gets boring, repetitive and you end up not checking
 the logs. It is a well known sysadmin syndrome.
 
-So, write those scripts adding hume commands. Something like this:
+Hume client works and can be used in bash scripts, or during a screen
+session, to provide real time updates to your managers, customers, etc.
+
+So, for instance write those scripts adding hume commands in them:
+
 ```
 #!/bin/bash
 # This script updates wordpress core, plugins and themes
@@ -57,6 +32,33 @@ done
 hume -c counter-stop -t "$HTASK" -T "$HTAGS" -m "Finished wordpress update cron task"
 ```
 
+The above usage example gives you a general idea that Hume is an agnostic system administration tool/framework.
+
+# Why is Hume agnostic?
+
+Every sysadmin, believe it or not, is a human being.
+
+The same reason there are awesome tools, for example Faraday (used by
+penetration testers and other members of the information security community)
+allows each individual pentester to do their work using the
+tools they like, and still be able to structurally share and enhance the data
+that comes out of them in a centralized knowledge database.
+
+Hume is the system administration equivalent of Faraday. And I think it goes
+hand in hand with devops, devsecops, etc.
+
+And both are agnostic in relation to how each person does their job: you do
+NOT need to use bash even. If you know enough Python, you can import hume
+into your script and report directly from your code. TODO: add an example.
+
+# Current Status / Needs
+
+* Query database and query tools (Codename KANT).
+
+Humed works in localhost mode only, but master/slave ideas have been
+considered (see below) - There is NO QUERY TOOL, but you can get data off
+the humed.sqlite3 database
+
 Then you could check the status of the latest run of the task:
 
 ```
@@ -67,7 +69,11 @@ humequery -t WORDPRESS_UPDATE --latest --hostname="webserver"
 
 And you would get the list of every hume event, plus a summary, including 
 
+* We need a UI/UX designer/developer, maybe a REST API for querytools.
+
+
 # Implementation, concepts, ideas
+
 ## Ideas for implementation
 
 hume uses zeromq over loopback to connecto to a hume daemon on the same
@@ -120,19 +126,19 @@ against slave or master.
 
 ## Transfer Methods
 
-Humed will support logstash, fluentd and kant.
+Humed currently supports logstash, syslog and remote syslog.
 
-Development will commence with logstash, then kant and finally fluentd,
+Next feature is multiple transfers, and this will require a bit of
+refactoring, plus a threaded model.
+
+In the future it will probably support fluentd and kant (our own query
+database / tool / dashboard system).
+
+Development will continue with logstash, then kant and finally fluentd,
 because I am not finding good fluent client/agent implementations in
 python3.
 
-The logstash support will use python-logstash-async.
-
-Kant will be our simple alternative to the aforementioned technologies, with included
-dashboard.
-
-A querytool for local humed instances (and potentially/desirably for kant)
-will be developed.
+The logstash support uses python-logstash-async.
 
 # DEVELOPMENT NOTES
 

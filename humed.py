@@ -72,7 +72,9 @@ class Humed():
             self.transfer_method_args = config[self.transfer_method].get()
             host = self.transfer_method_args['host'].get()
             port = self.transfer_method_args['host'].get()
-            self.logger.addHandler(AsyncLSH(host, port, database_path='logstash.db'))
+            self.logger.addHandler(AsyncLSH(host,
+                                            port,
+                                            database_path='logstash.db'))
         elif self.transfer_method is 'remote_syslog':
             self.transfer_method_args = config[self.transfer_method].get()
             server = self.config['remote_syslog']['server'].get()

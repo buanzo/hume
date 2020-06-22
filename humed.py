@@ -16,7 +16,7 @@ from pprint import pprint
 # The Confuse library is awesome.
 import confuse
 
-DEBUG = False  # TODO: set to False :P
+DEBUG = False  # TODO: add humed argparse and implement --debug
 
 # hume is VERY related to logs
 # better /var/humed/humed.sqlite3 ?
@@ -187,7 +187,8 @@ class Humed():
         except Exception as ex:
             return(False)  # FIX: malformed json at this stage? mmm
         hume = humepkt['hume']
-        pprint(hume)
+        if DEBUG:
+            pprint(hume)
         level = hume['level']
         tags = hume['tags']
         task = hume['task']
@@ -353,7 +354,7 @@ class Humed():
 
     def run(self):
         # Humed main loop
-        sock = zmq.Context().socket(zmq.PULL)
+        sock = zmq.Context().socket(zmq.REP)
         # print("Binding to '{}'".format(self.endpoint))
         sock.bind(self.endpoint)
         # 2a - Await hume message over zmp
@@ -364,10 +365,12 @@ class Humed():
             except Exception as ex:
                 print(ex)
                 print('Cannot json-loads the received message. notgood')
+                sock.send_string('Invalid JSON message')
             except KeyboardInterrupt as kb:
                 print('CTRL-C called, exiting now')
                 sys.exit(255)
             else:
+                sock.send_string('OK')
                 self.add_transfer(hume)
                 self.process_transfers()
         # TODO: 2c - log errors and rowids
@@ -393,16 +396,17 @@ def main():
     except Exception as ex:
         print('Humed: Config file validation error: {}'.format(ex))
         sys.exit(2)
-    print('-----[ CONFIG DUMP ]-----')
-    print(config.dump())
-    print('Available Transfer Methods: {}'.format(TRANSFER_METHODS))
-    print('---[ CONFIG DUMP END ]---')
+    if DEBUG:
+        print('-----[ CONFIG DUMP ]-----')
+        print(config.dump())
+        print('Available Transfer Methods: {}'.format(TRANSFER_METHODS))
+        print('---[ CONFIG DUMP END ]---')
     try:
         with pidfile.PIDFile():
-            print('Process started')
+            if DEBUG:
+                print('Process started')
     except pidfile.AlreadyRunningError:
-        print('Already running.')
-        print('Exiting')
+        print('Humed is already running. Exiting...')
         sys.exit(1)
 
     # Initialize Stuff - configuration will be tested in Humed __init__
@@ -411,7 +415,8 @@ def main():
     # TODO: Tell systemd we are ready
     # systemd.daemon.notify('READY=1')
 
-    print('Ready. serving...')
+    if DEBUG:
+        print('Ready. serving...')
     humed.run()
 
 

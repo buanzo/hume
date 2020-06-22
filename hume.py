@@ -10,7 +10,7 @@ from pprint import pprint
 from datetime import datetime
 from humetools import NotImplementedAction
 
-__version__ = '1.0'
+__version__ = '1.2'
 
 class Hume():
     def __init__(self, args):
@@ -47,9 +47,6 @@ class Hume():
         if (len(self.reqObj['process']) == 0):
             del(self.reqObj['process'])
 
-        # TODO: process args and add items to reqObj
-        print(self.config['url'])
-
         if self.config['url'].startswith('ipc://'):
             if not self.test_unix_socket(config['url']):
                 print('socket not writable or other error')
@@ -81,9 +78,10 @@ class Hume():
         # The abstraction level of zeromq does not allow to
         # simply check for correctly sent messages. We should wait for a REPly
         # FIX: see if we can make REP/REQ work as required
-        sock = zmq.Context().socket(zmq.PUSH)
-        sock.setsockopt(zmq.SNDTIMEO, 5)
-        sock.setsockopt(zmq.LINGER, 5)
+        sock = zmq.Context().socket(zmq.REQ)
+        #sock.setsockopt(zmq.SNDTIMEO, 5)
+        #sock.setsockopt(zmq.RCVTIMEO, 5)
+        sock.setsockopt(zmq.LINGER, 0)
         try:
             sock.connect(self.config['url'])
         except zmq.ZMQError as exc:
@@ -95,7 +93,21 @@ class Hume():
             msg = "\033[1;33mEXCEPTION:\033[0;37m{}"
             print(msg.format(exc))
             sys.exit(3)
-        return(None)
+        except Exception as exc:
+            print("Unknown exception: {}".format(exc))
+            sys.exit(4)
+        poller = zmq.Poller()
+        poller.register(sock, zmq.POLLIN)
+        if poller.poll(self.args.recvtimeout):
+            msg = sock.recv_string().strip()
+        else:
+            print('Timeout sending hume')
+            sys.exit(5)
+        sock.close()
+        # TODO: validate OK vs other errors. needs protocol def.
+        if msg == 'OK':
+            return(True)
+        return(False)
 
     def get_pstree(self):  # FIX: make better version
         ps_tree = []
@@ -142,9 +154,6 @@ def run():
                         dest='humecmd',
                         required=False,
                         help="[OPTIONAL] Command to attach to the update.")
-    parser.add_argument("-m", "--msg",
-                        required=True,
-                        help="[REQUIRED] Message to include with this update")
     parser.add_argument("-t", "--task",
                         required=False,
                         default='',
@@ -154,14 +163,31 @@ def run():
                         help="Append process calling tree")
     parser.add_argument('-T', '--tags',
                         type=lambda arg: arg.split(','),
+                        action='append',
                         help="Comma-separated list of tags")
     parser.add_argument('-e', '--encrypt-to',
                         default=None,
                         action=NotImplementedAction,
                         dest='encrypt_to',
                         help="[OPTIONAL] Encrypt to this gpg pubkey id")
+    parser.add_argument('--recv-timeout',
+                        default=1000,
+                        type=int,
+                        dest='recvtimeout',
+                        help="Time to wait for humed reply to hume message. Default 1000ms / 1 second.")
+    parser.add_argument('msg',
+                        help="[REQUIRED] Message to include with this update")
     args = parser.parse_args()
-    Hume(args).send(encrypt_to=args.encrypt_to)
+
+    # Allows for multiple --tags tag1,tag2 --tags tag3,tag4 to be a simple list
+    args.tags = [item for sublist in args.tags for item in sublist]
+
+    # Now we call the send method while initializing Hume() directly
+    # with the parsed args.
+    r = Hume(args).send(encrypt_to=args.encrypt_to)
+    if r is True:
+        sys.exit(0)
+    sys.exit(1)
 
 
 if __name__ == '__main__':

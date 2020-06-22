@@ -9,6 +9,7 @@ import sqlite3
 import datetime
 import argparse
 import socket
+import requests
 from logging.handlers import SysLogHandler
 # import systemd.daemon
 from pprint import pprint
@@ -25,7 +26,7 @@ if DEBUG:
 
 # Basic list of TRANSFER_METHODS
 # We extend TRANSFER_METHODS by testing for optional modules
-TRANSFER_METHODS = ['syslog', 'remote_syslog', 'kant']  # TODO: kant will be our own
+TRANSFER_METHODS = ['syslog', 'remote_syslog', 'slack', 'kant']  # TODO: kant will be our own
 
 # availability test for logstash (see optional_requirements.txt)
 try:
@@ -55,6 +56,9 @@ config_template = {  # TODO: add debug. check confuse.Bool()
         'host': confuse.String(),
         'port': confuse.Integer(),
     },
+    'slack': {
+        'webhook_url': confuse.String(),
+    },
 }
 
 
@@ -65,18 +69,18 @@ class Humed():
         self.debug = config['debug'].get()
         self.endpoint = config['endpoint'].get()
         self.transfer_method = config['transfer_method'].get()
+        self.transfer_method_args = config[self.transfer_method].get()
         # TODO: improve
         self.logger = logging.getLogger('humed-{}'.format(self.transfer_method))
         self.logger.setLevel(logging.INFO)
         if self.transfer_method is 'logstash':
-            self.transfer_method_args = config[self.transfer_method].get()
             host = self.transfer_method_args['host'].get()
             port = self.transfer_method_args['host'].get()
             self.logger.addHandler(AsyncLSH(host,
                                             port,
                                             database_path='logstash.db'))
+        # We will replace this with a plugin-oriented approach ASAP
         elif self.transfer_method is 'remote_syslog':
-            self.transfer_method_args = config[self.transfer_method].get()
             server = self.config['remote_syslog']['server'].get()
             port = self.config['remote_syslog']['port'].get()
             proto = self.config['remote_syslog']['proto'].get()
@@ -111,7 +115,7 @@ class Humed():
             return(False)
         return(True)
 
-    def transfer_ok(self, rowid):
+    def transfer_ok(self, rowid):  # add a DELETE somewhere sometime :P
         try:
             sql = 'UPDATE transfers SET sent=1 WHERE rowid=?'
             self.cursor.execute(sql, (rowid,))
@@ -167,10 +171,51 @@ class Humed():
                 ret = self.syslog(item=item)  # using std SysLogHandler
             elif self.transfer_method == 'remote_syslog':
                 ret = self.syslog(item=item)  # using std SysLogHandler
-            # if sent ok then:
-            # self.transfer_ok(archivo=archivo)
-            # if error return(False)
+            elif self.transfer_method == 'slack':
+                ret = self.slack(item=item)
+            if ret is True:
+                self.transfer_ok(rowid=item[0])
         return(True)
+
+    def slack(self,item=None):
+        if item is None:
+            return(False)  # FIX: should not happen
+        rowid = item[0]
+        ts = item[1]
+        try:
+            humepkt = json.loads(item[3])
+        except Exception as ex:
+            return(False)  # FIX: malformed json at this stage? mmm
+        hume = humepkt['hume']
+        pprint(hume)
+        level = hume['level']
+        tags = hume['tags']
+        task = hume['task']
+        msg = hume['msg']
+        if tags is None:
+            tagstr = ""
+        else:
+            tagstr = ','.join(tags)
+        # Make sure to read:
+        # https://api.slack.com/reference/surfaces/formatting
+        message = "[{ts}] - {level} {task}: '{msg}' {tagstr}".format(level=level,
+                                                                     msg=msg,
+                                                                     task=task,
+                                                                     ts=ts,
+                                                                     tagstr=tagstr)
+        # https://api.slack.com/reference/surfaces/formatting#escaping
+        message = message.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+        # Remember, text becomes a fallback if 'blocks' are in use:
+        # https://api.slack.com/messaging/composing/layouts#adding-blocks
+        slackmsg = {'text': message,}
+        # TODO: use blocks for a nicer message format
+        webhook = self.transfer_method_args['webhook_url']
+        ret = requests.post(webhook,
+                            headers={'Content-Type': 'application/json'},
+                            data=json.dumps(slackmsg))
+        if ret.status_code == 200:
+            return(True)
+        return(False)
 
     def logstash(self,item=None):
         if item is None:

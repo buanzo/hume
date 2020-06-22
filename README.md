@@ -72,6 +72,19 @@ And you would get the list of every hume event, plus a summary, including
 * We need a UI/UX designer/developer, maybe a REST API for querytools.
 
 
+# Slack support
+
+Hume currently allows you to send messages to a Slack channel using the
+Incoming Webhooks method. You need to create a channel for hume messages,
+then a Slack App, finally create an incoming webhook for that channel and
+paste the webhook url into the humed configuration file.
+
+Today, ALL hume messages will go to the same channel, but in the immediate
+future I will add support for task-specific channels (hume -t switch
+specifies taskname). The humed configuration will allow you to indicate
+which webhook to use for a specific task, plus a fallback/general webhook
+url for unmatched tasks or messages with no task identification.
+
 # Implementation, concepts, ideas
 
 ## Ideas for implementation
@@ -105,9 +118,6 @@ follow the devops pattern.
 command that lets the watchdog know it is effectively running daily.
 
 
-But first lets make a useful, working prototype.
-
-
 # Components
 
 ## hume
@@ -126,7 +136,7 @@ against slave or master.
 
 ## Transfer Methods
 
-Humed currently supports logstash, syslog and remote syslog.
+Humed currently supports slack, logstash, syslog and remote syslog.
 
 Next feature is multiple transfers, and this will require a bit of
 refactoring, plus a threaded model.

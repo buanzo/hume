@@ -2,7 +2,7 @@
 from setuptools import setup
 
 # Imports content of requirements.txt into setuptools' install_requires
-with open('deadset/requirements.txt') as f:
+with open('requirements.txt') as f:
       requirements = f.read().splitlines()
 
 def get_version():
@@ -14,13 +14,13 @@ def get_version():
 # Imports content of README.md into setuptools' long_description
 from os import path
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+with open(path.join(this_directory, 'README.txt'), encoding='utf-8') as f:
       long_description = f.read()
 
 
-setup(name='hume',
+setup(name='humed',
       version=get_version(),
-      description="Agnostic sysadmin/devops instrumentation tool",
+      description="Agnostic sysadmin/devops instrumentation tool. Includes hume and humed.",
       long_description=long_description,
       keywords='hume, humed, logstash, slack, syslog, kant, fluentd, devops, sysadmin, agnostic',
       author='Arturo "Buanzo" Busleiman',
@@ -29,10 +29,15 @@ setup(name='hume',
       license='MIT License',
       zip_safe=False,
       python_requires='>=3.6',
+      py_modules=['hume','humed', 'humetools', 'humeconfig'],
+      namespace_packages=[],
+      include_package_data=True,
       install_requires=requirements,
       entry_points={
          'console_scripts': [
             'hume = hume:run',
+            'humed = humed:main',
+            'humeconfig = humeconfig:run',
          ],
       },
       classifiers=[

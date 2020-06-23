@@ -160,3 +160,7 @@ The logstash support uses python-logstash-async.
 
 ## Miscelaneous
 * mention export LINENO before calling hume
+
+## TODO
+* Make humeconfig useful (humeconfig helps create or provision a hume/humed
+config file)

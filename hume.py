@@ -10,7 +10,7 @@ from pprint import pprint
 from datetime import datetime
 from humetools import NotImplementedAction
 
-__version__ = '1.2.7'
+__version__ = '1.2.8'
 
 class Hume():
     def __init__(self, args):

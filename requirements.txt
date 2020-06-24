@@ -1,7 +1,6 @@
 python_systemd==0.0.9
 pid==3.0.3
+confuse==1.1.0
 requests==2.18.4
 psutil==5.7.0
-confuse==1.1.0
 pyzmq==19.0.1
-systemd==0.16.1

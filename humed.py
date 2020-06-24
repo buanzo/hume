@@ -13,18 +13,11 @@ from logging.handlers import SysLogHandler
 from pid.decorator import pidfile
 from queue import Queue
 from threading import Thread
-#import systemd.daemon
 from pprint import pprint
 # The Confuse library is awesome.
 import confuse
 
-DEBUG = False
-
-# hume is VERY related to logs
-# better /var/humed/humed.sqlite3 ?
-DBPATH = '/var/log/humed.sqlite3'
-if DEBUG:
-    DBPATH = './humed.sqlite3'
+DEVMODE = False
 
 # Basic list of TRANSFER_METHODS
 # We extend TRANSFER_METHODS by testing for optional modules
@@ -69,6 +62,10 @@ class Humed():
         # We will only expose config if needed
         # self.config = config
         self.debug = config['debug'].get()
+        # Database path depends on debug
+        self.dbpath = '/var/log/humed.sqlite3'
+        if DEVMODE:
+            self.dbpath = './humed.sqlite3'
         self.endpoint = config['endpoint'].get()
         self.transfer_method = config['transfer_method'].get()
         self.transfer_method_args = config[self.transfer_method].get()
@@ -130,19 +127,19 @@ class Humed():
 
     def get_sqlite_conn(self):
         try:
-            conn = sqlite3.connect(DBPATH)
+            conn = sqlite3.connect(self.dbpath)
         except Exception as ex:
             printerr(ex)
-            printerr('Error connecting to sqlite3 on "{}"'.format(DBPATH))
+            printerr('Error connecting to sqlite3 on "{}"'.format(self.dbpath))
             return(None)
         return(conn)
 
     def prepare_db(self):
         try:
-            self.conn = sqlite3.connect(DBPATH)
+            self.conn = sqlite3.connect(self.dbpath)
         except Exception as ex:
             printerr(ex)
-            printerr('Humed: cannot connect to sqlite3 on "{}"'.format(DBPATH))
+            printerr('Humed: cannot connect to sqlite3 on "{}"'.format(self.dbpath))
         self.cursor = self.conn.cursor()
         try:
             sql = '''CREATE TABLE IF NOT EXISTS
@@ -465,9 +462,6 @@ def main():
 
     # Initialize Stuff - configuration will be tested in Humed __init__
     humed = Humed(config=config)
-
-    # TODO: Tell systemd we are ready
-    # systemd.daemon.notify('READY=1')
 
     if config.debug:
         print('Ready. serving...')

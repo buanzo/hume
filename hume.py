@@ -10,11 +10,10 @@ from pprint import pprint
 from datetime import datetime
 from humetools import NotImplementedAction
 
-__version__ = '1.2.1'
+__version__ = '1.2.3'
 
 class Hume():
     def __init__(self, args):
-        # self.config = {'url': 'ipc:///tmp/hume.sock'}
         self.config = {'url': 'tcp://127.0.0.1:198'}
 
         # args

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import os
 import sys
+import glob
 import json
 import argparse
 import requests
+from shutil import which
 from pprint import pprint
-
+from pathlib import Path
 
 class HumeConfig():
     def __init__(self):
@@ -54,6 +56,18 @@ class HumeConfig():
                 f.write("{}\n".format(item))
 # config.dump() to create a string rep of a yaml config
 
+# Avoid race conditions. Warning: this function OVERWRITES files, no questions asked
+def safe_write(dest,content,mode=0o600,uid='root',gid='root'):
+    if os.path.isfile(dest):
+        os.remove(dest)
+    original_umask = os.umask(0o177)  # 0o777 ^ 0o600
+    try:
+        handle = os.fdopen(os.open(dest, os.O_WRONLY | os.O_CREAT, mode), 'w')
+    finally:
+        os.umask(original_umask)
+    handle.write(content)
+    handle.close()
+    
 
 # print msg to stderr
 def printerr(msg):
@@ -117,6 +131,12 @@ must be specified, including port.''')
                         default=False,
                         action='store_true',
                         help='Disable file writes.')
+    parser.add_argument('--install-systemd',
+                        default=False,
+                        action='store_true',
+                        dest='installsystemd',
+                        help='''If /etc/humed/config.yaml exists, attempts to
+install and enable humed systemd service unit.''')
 
     # Show parser help if run without arguments:
     if len(sys.argv) < 2:
@@ -130,6 +150,55 @@ must be specified, including port.''')
     if args.digitalocean is True and args.from_url is None:
         printerr('--digitalocean indicated but --from-url is missing.')
         sys.exit(1)
+
+    if args.installsystemd is True:
+        # Verify /etc/humed/config.yaml exists and is a file:
+        if not Path("/etc/humed/config.yaml").is_file():
+            printerr('/etc/humed/config.yaml is not a file, or does not exist.')
+            printerr('Create it using humeconfig\'s other parameters.')
+            sys.exit(8)
+        # We will try to validate which directory holds service units
+        # at runtime. These are the two locations I have experience with
+        CHECK_DIRS = ['/lib/systemd/system', '/usr/lib/systemd/system']
+        TARGET_DIR = ''
+        for dir in CHECK_DIRS:
+            g = glob.glob('{dir}/*.service'.format(dir=dir))
+            if len(g) > 0:
+                TARGET_DIR = dir
+                break
+        if TARGET_DIR == '':  # no systemd service unit directory found
+            printerr('''None of these locations seems to hold systemd service units.
+Please open an issue at https://github.com/buanzo/hume/issues''')
+            printerr('{}'.format(CHECK_DIRS))
+            sys.exit(1)
+        # Ok, we found where service units should go
+        humed_path = which('humed')
+        if humed_path is None:
+            printerr('Could not find humed script in $PATH. Is it installed?')
+            sys.exit(7)
+        unit = '''
+[Unit]
+Description=The Hume Daemon
+
+[Service]
+Type=simple
+ExecStart={humed_path}
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+Type=notify
+
+[Install]
+WantedBy=default.target
+'''.format(humed_path=humed_path)
+        destination = '{unitdir}/humed.service'.format(unitdir=TARGET_DIR)
+        safe_write(destination,
+                   unit,
+                   mode=0o640,
+                   uid='root',
+                   gid='root')
+        print('{} has been created.'.format(destination))
+        print('Enable the service with:\nsudo systemctl enable humed\n')
+        sys.exit(0)
 
     h = HumeConfig()
     if args.from_url is not None:  # --from-url ON

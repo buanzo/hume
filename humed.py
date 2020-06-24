@@ -360,6 +360,12 @@ class Humed():
         # 2a - Await hume message over zmp
         while True:
             hume = {}
+            poller = zmq.Poller()
+            poller.register(sock, zmq.POLLIN)
+            if poller.poll(1000):
+                msg = sock.recv()
+            else:
+                continue
             try:
                 hume = json.loads(sock.recv())
             except Exception as ex:

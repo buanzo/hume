@@ -196,7 +196,10 @@ WantedBy=default.target
                    mode=0o640,
                    uid='root',
                    gid='root')
-        print('{} has been created.'.format(destination))
+        print('{} has been created with these contents:'.format(destination))
+        print('\n')
+        print(unit)
+        print('\n')
         print('Enable the service with:\nsudo systemctl enable humed\n')
         sys.exit(0)
 

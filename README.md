@@ -162,5 +162,5 @@ The logstash support uses python-logstash-async.
 * mention export LINENO before calling hume
 
 ## TODO
-* Make humeconfig useful (humeconfig helps create or provision a hume/humed
-config file)
+* Make humeconfig's --from-url work
+* Add systemd unit creation to humeconfig

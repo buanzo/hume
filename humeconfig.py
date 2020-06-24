@@ -185,7 +185,6 @@ Type=simple
 ExecStart={humed_path}
 Environment=PYTHONUNBUFFERED=1
 Restart=on-failure
-Type=notify
 
 [Install]
 WantedBy=default.target

@@ -13,7 +13,7 @@ from logging.handlers import SysLogHandler
 from pid.decorator import pidfile
 from queue import Queue
 from threading import Thread
-import systemd.daemon
+#import systemd.daemon
 from pprint import pprint
 # The Confuse library is awesome.
 import confuse
@@ -467,7 +467,7 @@ def main():
     humed = Humed(config=config)
 
     # TODO: Tell systemd we are ready
-    systemd.daemon.notify('READY=1')
+    # systemd.daemon.notify('READY=1')
 
     if config.debug:
         print('Ready. serving...')

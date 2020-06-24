@@ -11,12 +11,14 @@ import socket
 import requests
 from logging.handlers import SysLogHandler
 from pid.decorator import pidfile
+from queue import Queue
+from threading import Thread
 # import systemd.daemon
 from pprint import pprint
 # The Confuse library is awesome.
 import confuse
 
-DEBUG = False  # TODO: add humed argparse and implement --debug
+DEBUG = False
 
 # hume is VERY related to logs
 # better /var/humed/humed.sqlite3 ?
@@ -70,6 +72,12 @@ class Humed():
         self.endpoint = config['endpoint'].get()
         self.transfer_method = config['transfer_method'].get()
         self.transfer_method_args = config[self.transfer_method].get()
+        # Queue and Worker
+        self.queue = Queue()
+        worker = Thread(target=self.worker_process_transfers)
+        worker.daemon = True
+        worker.start()
+
         # TODO: improve
         self.logger = logging.getLogger('humed-{}'.format(self.transfer_method))
         self.logger.setLevel(logging.INFO)
@@ -98,6 +106,37 @@ class Humed():
         if self.prepare_db() is False:
             sys.exit('Humed: Error preparing database')
 
+    def worker_process_transfers(self):  # TODO
+        while True:
+            item = self.queue.get()
+            if self.debug:
+                pprint(item)
+            pendientes = self.list_transfers(pending=True)
+            if self.debug:
+                print('Pending Items to send: {}'.format(len(pendientes)))
+                print('Methods: {}'.format(self.transfer_method))
+            for item in pendientes:
+                if self.transfer_method == 'logstash':
+                    ret = self.logstash(item=item)
+                elif self.transfer_method == 'syslog':
+                    ret = self.syslog(item=item)  # using std SysLogHandler
+                elif self.transfer_method == 'rsyslog':
+                    ret = self.syslog(item=item)  # using std SysLogHandler
+                elif self.transfer_method == 'slack':
+                    ret = self.slack(item=item)
+                if ret is True:
+                    self.transfer_ok(rowid=item[0])
+            self.queue.task_done()
+
+    def get_sqlite_conn(self):
+        try:
+            conn = sqlite3.connect(DBPATH)
+        except Exception as ex:
+            print(ex)
+            print('Error connecting to sqlite3 on "{}"'.format(DBPATH))
+            return(None)
+        return(conn)
+
     def prepare_db(self):
         try:
             self.conn = sqlite3.connect(DBPATH)
@@ -118,8 +157,10 @@ class Humed():
     def transfer_ok(self, rowid):  # add a DELETE somewhere sometime :P
         try:
             sql = 'UPDATE transfers SET sent=1 WHERE rowid=?'
-            self.cursor.execute(sql, (rowid,))
-            self.conn.commit()
+            conn = self.get_sqlite_conn()
+            cursor = conn.cursor()
+            cursor.execute(sql, (rowid,))
+            conn.commit()
         except Exception as ex:
             print(ex)
             return(False)
@@ -151,8 +192,10 @@ class Humed():
         lista = []
         rows = []
         try:
-            self.cursor.execute(sql)
-            rows = self.cursor.fetchall()
+            conn = self.get_sqlite_conn()
+            cursor = conn.cursor()
+            cursor.execute(sql)
+            rows = cursor.fetchall()
         except Exception as ex:
             print(ex)
 
@@ -161,10 +204,11 @@ class Humed():
         return(lista)
 
     def process_transfers(self):
-        # TODO: The master/slave thingy...
         pendientes = self.list_transfers(pending=True)
+        if self.debug:
+            print('Pending Items to send: {}'.format(len(pendientes)))
+            print('Methods: {}'.format(self.transfer_method))
         for item in pendientes:
-            # TODO: send to master-hume
             if self.transfer_method == 'logstash':
                 ret = self.logstash(item=item)
             elif self.transfer_method == 'syslog':
@@ -187,7 +231,7 @@ class Humed():
         except Exception as ex:
             return(False)  # FIX: malformed json at this stage? mmm
         hume = humepkt['hume']
-        if DEBUG:
+        if self.debug:
             pprint(hume)
         level = hume['level']
         tags = hume['tags']
@@ -211,9 +255,14 @@ class Humed():
         slackmsg = {'text': message,}
         # TODO: use blocks for a nicer message format
         webhook = self.transfer_method_args['webhook_url']
+        if self.debug:
+            print('Using webhook: {}'.format(webhook))
         ret = requests.post(webhook,
                             headers={'Content-Type': 'application/json'},
                             data=json.dumps(slackmsg))
+        if self.debug:
+            pprint(slackmsg)
+            pprint(ret)
         if ret.status_code == 200:
             return(True)
         return(False)
@@ -355,9 +404,11 @@ class Humed():
     def run(self):
         # Humed main loop
         sock = zmq.Context().socket(zmq.REP)
-        # print("Binding to '{}'".format(self.endpoint))
+        sock.setsockopt(zmq.LINGER, 0)
         sock.bind(self.endpoint)
-        # 2a - Await hume message over zmp
+        # Check for pending transfers first
+        self.queue.put(('work'))
+        # Await hume message over zmp and dispatch job thru queue
         while True:
             hume = {}
             poller = zmq.Poller()
@@ -365,9 +416,12 @@ class Humed():
             if poller.poll(1000):
                 msg = sock.recv()
             else:
+                print('timeout')
                 continue
             try:
-                hume = json.loads(sock.recv())
+                print(msg)
+                #msg = sock.recv()
+                hume = json.loads(msg)
             except Exception as ex:
                 print(ex)
                 print('Cannot json-loads the received message. notgood')
@@ -377,8 +431,11 @@ class Humed():
                 sys.exit(255)
             else:
                 sock.send_string('OK')
-                self.add_transfer(hume)
-                self.process_transfers()
+                rowid = self.add_transfer(hume)
+                self.queue.put(('work'))
+                if self.debug:
+                    print(rowid)
+                #self.process_transfers()
         # TODO: 2c - log errors and rowids
         # TODO: deal with exits/breaks
 
@@ -387,26 +444,23 @@ class Humed():
 def main():
     # First, parse configuration
     config = confuse.Configuration('humed')
-    # Config defaults
-    config['endpoint'] = 'tcp://127.0.0.1:198'
-    config['rsyslog']['server'] = 'syslog.example.net'
-    config['rsyslog']['proto'] = 'udp'
-    config['rsyslog']['port'] = 514
-    config['logstash']['host'] = '127.0.0.1'
-    config['logstash']['port'] = 24224
-    config['slack']['webhook_url'] = 'https://example.net/some/webhook/path'
     parser = argparse.ArgumentParser()
-    config['debug'] = DEBUG
     parser.add_argument('--debug',
+                        default=False,
+                        action='store_true',
                         help='Enables debug messages')
     args = parser.parse_args()
     config.set_args(args)
+    config.debug = args.debug
     try:
         valid = config.get(template=config_template)
+    except confuse.NotFoundError:
+        pass
     except Exception as ex:
+        pprint(ex)
         print('Humed: Config file validation error: {}'.format(ex))
         sys.exit(2)
-    if DEBUG:
+    if config.debug:
         print('-----[ CONFIG DUMP ]-----')
         print(config.dump())
         print('Available Transfer Methods: {}'.format(TRANSFER_METHODS))
@@ -418,7 +472,7 @@ def main():
     # TODO: Tell systemd we are ready
     # systemd.daemon.notify('READY=1')
 
-    if DEBUG:
+    if config.debug:
         print('Ready. serving...')
     humed.run()
 

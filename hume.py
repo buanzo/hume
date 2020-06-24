@@ -181,6 +181,8 @@ def run():
     # Allows for multiple --tags tag1,tag2 --tags tag3,tag4 to be a simple list
     if args.tags is not None:
         args.tags = [item for sublist in args.tags for item in sublist]
+    else:
+        args.tags = []
 
     # Now we call the send method while initializing Hume() directly
     # with the parsed args.

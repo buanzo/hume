@@ -388,9 +388,12 @@ def main():
     config = confuse.Configuration('humed')
     # Config defaults
     config['endpoint'] = 'tcp://127.0.0.1:198'
-    config['rsyslog']['server'] = 'localhost'
+    config['rsyslog']['server'] = 'syslog.example.net'
     config['rsyslog']['proto'] = 'udp'
     config['rsyslog']['port'] = 514
+    config['logstash']['host'] = '127.0.0.1'
+    config['logstash']['port'] = 24224
+    config['slack']['webhook_url'] = 'https://example.net/some/webhook/path'
     parser = argparse.ArgumentParser()
     config['debug'] = DEBUG
     parser.add_argument('--debug',

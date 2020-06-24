@@ -4,13 +4,13 @@ import sys
 import zmq
 import json
 import socket
-import pidfile
 import sqlite3
 import datetime
 import argparse
 import socket
 import requests
 from logging.handlers import SysLogHandler
+from pid.decorator import pidfile
 # import systemd.daemon
 from pprint import pprint
 # The Confuse library is awesome.
@@ -383,6 +383,7 @@ class Humed():
         # TODO: deal with exits/breaks
 
 
+@pidfile()
 def main():
     # First, parse configuration
     config = confuse.Configuration('humed')
@@ -410,13 +411,6 @@ def main():
         print(config.dump())
         print('Available Transfer Methods: {}'.format(TRANSFER_METHODS))
         print('---[ CONFIG DUMP END ]---')
-    try:
-        with pidfile.PIDFile():
-            if DEBUG:
-                print('Process started')
-    except pidfile.AlreadyRunningError:
-        print('Humed is already running. Exiting...')
-        sys.exit(1)
 
     # Initialize Stuff - configuration will be tested in Humed __init__
     humed = Humed(config=config)

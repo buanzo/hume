@@ -26,7 +26,7 @@ if DEBUG:
 
 # Basic list of TRANSFER_METHODS
 # We extend TRANSFER_METHODS by testing for optional modules
-TRANSFER_METHODS = ['syslog', 'remote_syslog', 'slack', 'kant']  # TODO: kant will be our own
+TRANSFER_METHODS = ['syslog', 'rsyslog', 'slack', 'kant']  # TODO: kant will be our own
 
 # availability test for logstash (see optional_requirements.txt)
 try:
@@ -47,7 +47,7 @@ else:
 config_template = {  # TODO: add debug. check confuse.Bool()
     'endpoint': confuse.String(),
     'transfer_method': confuse.OneOf(TRANSFER_METHODS),
-    'remote_syslog': {
+    'rsyslog': {
         'server': confuse.String(),
         'proto': confuse.OneOf(['tcp','udp']),
         'port': confuse.Integer(),
@@ -80,10 +80,10 @@ class Humed():
                                             port,
                                             database_path='logstash.db'))
         # We will replace this with a plugin-oriented approach ASAP
-        elif self.transfer_method is 'remote_syslog':
-            server = self.config['remote_syslog']['server'].get()
-            port = self.config['remote_syslog']['port'].get()
-            proto = self.config['remote_syslog']['proto'].get()
+        elif self.transfer_method is 'rsyslog':
+            server = self.config['rsyslog']['server'].get()
+            port = self.config['rsyslog']['port'].get()
+            proto = self.config['rsyslog']['proto'].get()
             sa = (server,port)
             if proto is 'udp':
                 self.logger.addHandler(SysLogHandler(address=sa,
@@ -169,7 +169,7 @@ class Humed():
                 ret = self.logstash(item=item)
             elif self.transfer_method == 'syslog':
                 ret = self.syslog(item=item)  # using std SysLogHandler
-            elif self.transfer_method == 'remote_syslog':
+            elif self.transfer_method == 'rsyslog':
                 ret = self.syslog(item=item)  # using std SysLogHandler
             elif self.transfer_method == 'slack':
                 ret = self.slack(item=item)
@@ -382,9 +382,9 @@ def main():
     config = confuse.Configuration('humed')
     # Config defaults
     config['endpoint'] = 'tcp://127.0.0.1:198'
-    config['remote_syslog']['server'] = 'localhost'
-    config['remote_syslog']['proto'] = 'udp'
-    config['remote_syslog']['port'] = 514
+    config['rsyslog']['server'] = 'localhost'
+    config['rsyslog']['proto'] = 'udp'
+    config['rsyslog']['port'] = 514
     parser = argparse.ArgumentParser()
     config['debug'] = DEBUG
     parser.add_argument('--debug',

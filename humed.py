@@ -132,8 +132,8 @@ class Humed():
         try:
             conn = sqlite3.connect(DBPATH)
         except Exception as ex:
-            print(ex)
-            print('Error connecting to sqlite3 on "{}"'.format(DBPATH))
+            printerr(ex)
+            printerr('Error connecting to sqlite3 on "{}"'.format(DBPATH))
             return(None)
         return(conn)
 
@@ -141,8 +141,8 @@ class Humed():
         try:
             self.conn = sqlite3.connect(DBPATH)
         except Exception as ex:
-            print(ex)
-            print('Humed: cannot connect to sqlite3 on "{}"'.format(DBPATH))
+            printerr(ex)
+            printerr('Humed: cannot connect to sqlite3 on "{}"'.format(DBPATH))
         self.cursor = self.conn.cursor()
         try:
             sql = '''CREATE TABLE IF NOT EXISTS
@@ -150,7 +150,7 @@ class Humed():
             self.cursor.execute(sql)
             self.conn.commit()
         except Exception as ex:
-            print(ex)
+            printerr(ex)
             return(False)
         return(True)
 
@@ -162,7 +162,7 @@ class Humed():
             cursor.execute(sql, (rowid,))
             conn.commit()
         except Exception as ex:
-            print(ex)
+            printerr(ex)
             return(False)
         return(True)
 
@@ -170,8 +170,8 @@ class Humed():
         try:
             hume = json.dumps(hume)
         except Exception as ex:
-            print('Humed - add_transfer() json dumps exception:')
-            print(ex)
+            printerr('Humed - add_transfer() json dumps exception:')
+            printerr(ex)
             return(None)  # FIX: should we exit?
         try:
             now = datetime.datetime.now()
@@ -179,8 +179,8 @@ class Humed():
             self.cursor.execute(sql, (now, 0, hume,))
             self.conn.commit()
         except Exception as ex:
-            print('Humed: add_transfer() Exception:')
-            print(ex)
+            printerr('Humed: add_transfer() Exception:')
+            printerr(ex)
             return(None)
         return(self.cursor.lastrowid)
 
@@ -197,7 +197,7 @@ class Humed():
             cursor.execute(sql)
             rows = cursor.fetchall()
         except Exception as ex:
-            print(ex)
+            printerr(ex)
 
         for row in rows:
             lista.append(row)
@@ -416,18 +416,15 @@ class Humed():
             if poller.poll(1000):
                 msg = sock.recv()
             else:
-                print('timeout')
                 continue
             try:
-                print(msg)
-                #msg = sock.recv()
                 hume = json.loads(msg)
             except Exception as ex:
-                print(ex)
-                print('Cannot json-loads the received message. notgood')
+                printerr(ex)
+                printerr('Cannot json-loads the received message. notgood')
                 sock.send_string('Invalid JSON message')
             except KeyboardInterrupt as kb:
-                print('CTRL-C called, exiting now')
+                printerr('CTRL-C called, exiting now')
                 sys.exit(255)
             else:
                 sock.send_string('OK')
@@ -457,8 +454,8 @@ def main():
     except confuse.NotFoundError:
         pass
     except Exception as ex:
-        pprint(ex)
-        print('Humed: Config file validation error: {}'.format(ex))
+        pprinterr(ex)
+        printerr('Humed: Config file validation error: {}'.format(ex))
         sys.exit(2)
     if config.debug:
         print('-----[ CONFIG DUMP ]-----')

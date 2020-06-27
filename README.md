@@ -79,11 +79,13 @@ Incoming Webhooks method. You need to create a channel for hume messages,
 then a Slack App, finally create an incoming webhook for that channel and
 paste the webhook url into the humed configuration file.
 
-Today, ALL hume messages will go to the same channel, but in the immediate
-future I will add support for task-specific channels (hume -t switch
-specifies taskname). The humed configuration will allow you to indicate
-which webhook to use for a specific task, plus a fallback/general webhook
-url for unmatched tasks or messages with no task identification.
+Today, hume messages may be routed to different slack channels by error
+level. slack:webhook_default will be used as fallback.
+
+In the immediate future I will add support for task-specific channels (hume
+-t switch specifies taskname).  The humed configuration will allow you to
+indicate which webhook to use for a specific task, plus a fallback/general
+webhook url for unmatched tasks or messages with no task identification.
 
 # Implementation, concepts, ideas
 

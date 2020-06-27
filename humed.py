@@ -52,7 +52,11 @@ config_template = {  # TODO: add debug. check confuse.Bool()
         'port': confuse.Integer(),
     },
     'slack': {
-        'webhook_url': confuse.String(),
+        'webhook_default': confuse.String(),  # for ok and info messages
+        'webhook_warning': confuse.String(),
+        'webhook_error': confuse.String(),
+        'webhook_critical': confuse.String(),
+        'webhook_debug': confuse.String(),
     },
 }
 
@@ -251,9 +255,17 @@ class Humed():
         # https://api.slack.com/messaging/composing/layouts#adding-blocks
         slackmsg = {'text': message,}
         # TODO: use blocks for a nicer message format
-        webhook = self.transfer_method_args['webhook_url']
+        # choose appropriate channel by config key
+        if level in ['ok','info']:
+            chan = 'webhook_default'
+        else:
+            chan = 'webhook_{}'.format(level)
+        # if the config key does not exist, fallback to default:
+        if chan not in self.transfer_method_args.keys():
+            chan = 'webhook_default'
+        webhook = self.transfer_method_args[chan]
         if self.debug:
-            print('Using webhook: {}'.format(webhook))
+            print('Using {}="{}" for level "{}"'.format(chan,webhook,level))
         ret = requests.post(webhook,
                             headers={'Content-Type': 'application/json'},
                             data=json.dumps(slackmsg))
@@ -302,9 +314,9 @@ class Humed():
         # a syslog severity, closest is info but...  TODO: think about this
         # hume level -> syslog severity 
         # ----------------------------
-        # ok         -> info
-        # info       -> info
-        # warn       -> warning
+        # ok         -> info (or default)
+        # info       -> info (or default)
+        # warning    -> warning
         # error      -> error
         # critical   -> critical
         # debug      -> debug
@@ -312,7 +324,7 @@ class Humed():
             if level == 'ok' or level == 'info':
                 # https://python-logstash-async.readthedocs.io/en/stable/usage.html#
                 self.logger.info('hume({}): {}'.format(hostname, msg), extra=extra)
-            elif level == 'warn':
+            elif level == 'warning':
                 self.logger.warning('hume({}) {}'.format(hostname, msg), extra=extra)
             elif level == 'error':
                 self.logger.error('hume({}): {}'.format(hostname, msg), extra=extra)

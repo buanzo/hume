@@ -29,7 +29,12 @@ class HumeConfig():
             if method == 'slack':
                 url = args['slack'][0]
                 self.config.append('slack:')
-                self.config.append('    webhook_url: {}'.format(url))
+                self.config.append('    webhook_default: {}'.format(url))
+                for level in ['warning', 'error', 'critical', 'debug']:
+                    key = 'slack_{}'.format(level)
+                    if key in args.keys() and args[key] is not None:
+                        url = args[key][0]
+                        self.config.append('    webhook_{}: {}'.format(level, url))
             elif method == 'rsyslog':
                 rs = args['rsyslog'][0]
                 proto = rs.split('://')[0]
@@ -122,7 +127,7 @@ must be specified, including port.''')
                         default=None,
                         metavar='WEBHOOK_URL',
                         nargs=1,
-                        help="Enable Slack using a webhook url.")
+                        help="Enable Slack using a webhook url. Use --full-help for additional options.")
     parser.add_argument('--quiet',
                         default=False,
                         action='store_true',
@@ -138,8 +143,28 @@ must be specified, including port.''')
                         help='''If /etc/humed/config.yaml exists, attempts to
 install and enable humed systemd service unit.''')
 
+    # full help workaround for --slack-{level} arguments
+    parser.add_argument('--full-help',
+                        default=False,
+                        action='store_true',
+                        dest='fullhelp',
+                        help='Shows complete help, including --slack dependant arguments.')
+    # arg-dependant args:
+    args = parser.parse_known_args()[0]
+    pprint(args)
+    if args.slack or args.fullhelp is True or len(sys.argv) < 2:  # enable additional --slack-[level] arguments
+        print('enabling additional arguments')
+        levels = ['warning', 'error', 'critical', 'debug']
+        for level in levels:
+            parser.add_argument('--slack-{}'.format(level),
+                                default=None,
+                                metavar='WEBHOOK_URL',
+                                nargs=1,
+                                dest='slack_{}'.format(level),
+                                help="Use this webhook for {}-level messages. Requires --slack.".format(level))
+
     # Show parser help if run without arguments:
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 2 or args.fullhelp: 
         parser.print_help()
         sys.exit(1)
 
@@ -221,15 +246,12 @@ WantedBy=default.target
     if args.quiet is False:
         h.print_config()
 
-    # Test writability of /etc
-    if dir_is_writable('/etc') is False:
-        printerr('No write access to /etc. Not running as root?')
-        if args.dry is True:  # if we cant write but its dry, we return OK
-            sys.exit(0)
-        sys.exit(1)
-
     # If we are still here and is not a dry run, proceed to write
     if args.dry is False:
+        # Test writability of /etc
+        if dir_is_writable('/etc') is False:
+            printerr('No write access to /etc. Not running as root?')
+            sys.exit(1)
         try:
             h.save_config()
         except Exception as exc:

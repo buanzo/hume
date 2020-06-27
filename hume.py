@@ -141,7 +141,7 @@ class Hume():
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument("-L", "--level",
-                        choices=['ok', 'warn', 'error', 'info', 'critical', 'debug'],
+                        choices=['ok', 'warning', 'error', 'info', 'critical', 'debug'],
                         default="info",
                         help="Level of update to send, defaults to 'info'")
     parser.add_argument("-c", "--hume-cmd",

@@ -5,9 +5,10 @@ import glob
 import json
 import argparse
 import requests
+from humetools import printerr
 from shutil import which
-from pprint import pprint
 from pathlib import Path
+
 
 class HumeConfig():
     def __init__(self):
@@ -34,7 +35,8 @@ class HumeConfig():
                     key = 'slack_{}'.format(level)
                     if key in args.keys() and args[key] is not None:
                         url = args[key][0]
-                        self.config.append('    webhook_{}: {}'.format(level, url))
+                        self.config.append('    webhook_{}: {}'.format(level,
+                                                                       url))
             elif method == 'rsyslog':
                 rs = args['rsyslog'][0]
                 proto = rs.split('://')[0]
@@ -61,8 +63,10 @@ class HumeConfig():
                 f.write("{}\n".format(item))
 # config.dump() to create a string rep of a yaml config
 
-# Avoid race conditions. Warning: this function OVERWRITES files, no questions asked
-def safe_write(dest,content,mode=0o600,uid='root',gid='root'):
+
+# Avoid race conditions.  Warning: this function OVERWRITES files, no
+# questions asked
+def safe_write(dest, content, mode=0o600, uid='root', gid='root'):
     if os.path.isfile(dest):
         os.remove(dest)
     original_umask = os.umask(0o177)  # 0o777 ^ 0o600
@@ -72,11 +76,6 @@ def safe_write(dest,content,mode=0o600,uid='root',gid='root'):
         os.umask(original_umask)
     handle.write(content)
     handle.close()
-    
-
-# print msg to stderr
-def printerr(msg):
-    print("{}".format(msg), file=sys.stderr)
 
 
 # Test if we can write to dir
@@ -127,7 +126,8 @@ must be specified, including port.''')
                         default=None,
                         metavar='WEBHOOK_URL',
                         nargs=1,
-                        help="Enable Slack using a webhook url. Use --full-help for additional options.")
+                        help='''Enable Slack using a webhook url.
+Use --full-help for additional options.''')
     parser.add_argument('--quiet',
                         default=False,
                         action='store_true',
@@ -148,11 +148,14 @@ install and enable humed systemd service unit.''')
                         default=False,
                         action='store_true',
                         dest='fullhelp',
-                        help='Shows complete help, including --slack dependant arguments.')
+                        help='''Shows complete help, including
+--slack dependant arguments.''')
+
     # arg-dependant args:
     args = parser.parse_known_args()[0]
-    pprint(args)
-    if args.slack or args.fullhelp is True or len(sys.argv) < 2:  # enable additional --slack-[level] arguments
+
+    # enable additional --slack-[level] arguments when --slack is on
+    if args.slack or args.fullhelp is True or len(sys.argv) < 2:
         print('enabling additional arguments')
         levels = ['warning', 'error', 'critical', 'debug']
         for level in levels:
@@ -161,10 +164,11 @@ install and enable humed systemd service unit.''')
                                 metavar='WEBHOOK_URL',
                                 nargs=1,
                                 dest='slack_{}'.format(level),
-                                help="Use this webhook for {}-level messages. Requires --slack.".format(level))
+                                help='''Use this webhook for {}-level messages.
+Requires --slack.'''.format(level))
 
     # Show parser help if run without arguments:
-    if len(sys.argv) < 2 or args.fullhelp: 
+    if len(sys.argv) < 2 or args.fullhelp:
         parser.print_help()
         sys.exit(1)
 
@@ -179,7 +183,7 @@ install and enable humed systemd service unit.''')
     if args.installsystemd is True:
         # Verify /etc/humed/config.yaml exists and is a file:
         if not Path("/etc/humed/config.yaml").is_file():
-            printerr('/etc/humed/config.yaml is not a file, or does not exist.')
+            printerr('/etc/humed/config.yaml: not a file, or does not exist.')
             printerr('Create it using humeconfig\'s other parameters.')
             sys.exit(8)
         # We will try to validate which directory holds service units
@@ -192,8 +196,8 @@ install and enable humed systemd service unit.''')
                 TARGET_DIR = dir
                 break
         if TARGET_DIR == '':  # no systemd service unit directory found
-            printerr('''None of these locations seems to hold systemd service units.
-Please open an issue at https://github.com/buanzo/hume/issues''')
+            printerr('''None of these locations seems to hold systemd service
+units. Please open an issue at https://github.com/buanzo/hume/issues''')
             printerr('{}'.format(CHECK_DIRS))
             sys.exit(1)
         # Ok, we found where service units should go

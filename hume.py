@@ -6,11 +6,11 @@ import stat
 import psutil
 import argparse
 import json
-from pprint import pprint
 from datetime import datetime
-from humetools import NotImplementedAction
+from humetools import NotImplementedAction, printerr
 
-__version__ = '1.2.9'
+__version__ = '1.2.10'
+
 
 class Hume():
     def __init__(self, args):
@@ -78,8 +78,6 @@ class Hume():
         # simply check for correctly sent messages. We should wait for a REPly
         # FIX: see if we can make REP/REQ work as required
         sock = zmq.Context().socket(zmq.REQ)
-        #sock.setsockopt(zmq.SNDTIMEO, 5)
-        #sock.setsockopt(zmq.RCVTIMEO, 5)
         sock.setsockopt(zmq.LINGER, 0)
         try:
             sock.connect(self.config['url'])
@@ -141,7 +139,9 @@ class Hume():
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument("-L", "--level",
-                        choices=['ok', 'warning', 'error', 'info', 'critical', 'debug'],
+                        choices=['ok', 'info',
+                                 'warning', 'error',
+                                 'critical', 'debug'],
                         default="info",
                         help="Level of update to send, defaults to 'info'")
     parser.add_argument("-c", "--hume-cmd",
@@ -173,7 +173,8 @@ def run():
                         default=1000,
                         type=int,
                         dest='recvtimeout',
-                        help="Time to wait for humed reply to hume message. Default 1000ms / 1 second.")
+                        help='''Time to wait for humed reply to hume message.
+Default 1000ms / 1 second.''')
     parser.add_argument('msg',
                         help="[REQUIRED] Message to include with this update")
     args = parser.parse_args()

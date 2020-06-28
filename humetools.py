@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import argparse
-
+from pprint import pprint
 
 class NotImplementedAction(argparse.Action):
     """ This class allows to work on getting your Argparse object
@@ -21,3 +21,11 @@ class NotImplementedAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         msg = 'Argument "{}" still not implemented.'.format(option_string)
         sys.exit(msg)
+
+
+# Guess.
+def printerr(msg):
+    print("{}".format(msg), file=sys.stderr)
+
+def pprinterr(o):
+    pprint(o, stream=sys.stderr)

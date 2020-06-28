@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import logging
+from logging import getLogger
 import sys
 import zmq
 import json
@@ -13,7 +14,7 @@ from logging.handlers import SysLogHandler
 from pid.decorator import pidfile
 from queue import Queue
 from threading import Thread
-from pprint import pprint
+from humetools import printerr, pprinterr
 # The Confuse library is awesome.
 import confuse
 
@@ -21,7 +22,8 @@ DEVMODE = False
 
 # Basic list of TRANSFER_METHODS
 # We extend TRANSFER_METHODS by testing for optional modules
-TRANSFER_METHODS = ['syslog', 'rsyslog', 'slack', 'kant']  # TODO: kant will be our own
+# TODO: kant will be our own
+TRANSFER_METHODS = ['syslog', 'rsyslog', 'slack', 'kant']
 
 # availability test for logstash (see optional_requirements.txt)
 try:
@@ -44,7 +46,7 @@ config_template = {  # TODO: add debug. check confuse.Bool()
     'transfer_method': confuse.OneOf(TRANSFER_METHODS),
     'rsyslog': {
         'server': confuse.String(),
-        'proto': confuse.OneOf(['tcp','udp']),
+        'proto': confuse.OneOf(['tcp', 'udp']),
         'port': confuse.Integer(),
     },
     'logstash': {
@@ -80,7 +82,7 @@ class Humed():
         worker.start()
 
         # TODO: improve
-        self.logger = logging.getLogger('humed-{}'.format(self.transfer_method))
+        self.logger = getLogger('humed-{}'.format(self.transfer_method))
         self.logger.setLevel(logging.INFO)
         if self.transfer_method is 'logstash':
             host = self.transfer_method_args['host'].get()
@@ -93,13 +95,16 @@ class Humed():
             server = self.config['rsyslog']['server'].get()
             port = self.config['rsyslog']['port'].get()
             proto = self.config['rsyslog']['proto'].get()
-            sa = (server,port)
+            sa = (server, port)
             if proto is 'udp':
-                self.logger.addHandler(SysLogHandler(address=sa,
-                                                     socktype=socket.SOCK_DGRAM))
+                socktype = socket.SOCK_DGRAM
             elif proto is 'tcp':
-                self.logger.addHandler(SysLogHandler(address=sa,
-                                                     socktype=socket.SOCK_STREAM))
+                socktype = socket.SOCK_STREAM
+            else:
+                printerr('Unknown proto "{}" in __init__')
+                sys.exit(127)
+            self.logger.addHandler(SysLogHandler(address=sa,
+                                                 socktype=socktype))
         elif self.transfer_method is 'syslog':
             self.logger.addHandler(logging.handlers.SysLogHandler())
         # no 'else' because confuse takes care of validating config options
@@ -111,11 +116,11 @@ class Humed():
         while True:
             item = self.queue.get()
             if self.debug:
-                pprint(item)
+                pprinterr(item)
             pendientes = self.list_transfers(pending=True)
             if self.debug:
-                print('Pending Items to send: {}'.format(len(pendientes)))
-                print('Methods: {}'.format(self.transfer_method))
+                printerr('Pending Items to send: {}'.format(len(pendientes)))
+                printerr('Methods: {}'.format(self.transfer_method))
             for item in pendientes:
                 if self.transfer_method == 'logstash':
                     ret = self.logstash(item=item)
@@ -143,7 +148,7 @@ class Humed():
             self.conn = sqlite3.connect(self.dbpath)
         except Exception as ex:
             printerr(ex)
-            printerr('Humed: cannot connect to sqlite3 on "{}"'.format(self.dbpath))
+            printerr('Humed: cant connect sqlite3 on "{}"'.format(self.dbpath))
         self.cursor = self.conn.cursor()
         try:
             sql = '''CREATE TABLE IF NOT EXISTS
@@ -207,8 +212,8 @@ class Humed():
     def process_transfers(self):
         pendientes = self.list_transfers(pending=True)
         if self.debug:
-            print('Pending Items to send: {}'.format(len(pendientes)))
-            print('Methods: {}'.format(self.transfer_method))
+            printerr('Pending Items to send: {}'.format(len(pendientes)))
+            printerr('Methods: {}'.format(self.transfer_method))
         for item in pendientes:
             if self.transfer_method == 'logstash':
                 ret = self.logstash(item=item)
@@ -222,7 +227,7 @@ class Humed():
                 self.transfer_ok(rowid=item[0])
         return(True)
 
-    def slack(self,item=None):
+    def slack(self, item=None):
         if item is None:
             return(False)  # FIX: should not happen
         rowid = item[0]
@@ -233,7 +238,7 @@ class Humed():
             return(False)  # FIX: malformed json at this stage? mmm
         hume = humepkt['hume']
         if self.debug:
-            pprint(hume)
+            pprinterr(hume)
         level = hume['level']
         tags = hume['tags']
         task = hume['task']
@@ -244,19 +249,19 @@ class Humed():
             tagstr = ','.join(tags)
         # Make sure to read:
         # https://api.slack.com/reference/surfaces/formatting
-        message = "[{ts}] - {level} {task}: '{msg}' {tagstr}".format(level=level,
-                                                                     msg=msg,
-                                                                     task=task,
-                                                                     ts=ts,
-                                                                     tagstr=tagstr)
+        m = "[{ts}] - {level} {task}: '{msg}' {tagstr}".format(level=level,
+                                                               msg=msg,
+                                                               task=task,
+                                                               ts=ts,
+                                                               tagstr=tagstr)
         # https://api.slack.com/reference/surfaces/formatting#escaping
-        message = message.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+        m = m.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
         # Remember, text becomes a fallback if 'blocks' are in use:
         # https://api.slack.com/messaging/composing/layouts#adding-blocks
-        slackmsg = {'text': message,}
+        slackmsg = {'text': m, }
         # TODO: use blocks for a nicer message format
         # choose appropriate channel by config key
-        if level in ['ok','info']:
+        if level in ['ok', 'info']:
             chan = 'webhook_default'
         else:
             chan = 'webhook_{}'.format(level)
@@ -265,18 +270,20 @@ class Humed():
             chan = 'webhook_default'
         webhook = self.transfer_method_args[chan]
         if self.debug:
-            print('Using {}="{}" for level "{}"'.format(chan,webhook,level))
+            printerr('Using {}="{}" for level "{}"'.format(chan,
+                                                           webhook,
+                                                           level))
         ret = requests.post(webhook,
                             headers={'Content-Type': 'application/json'},
                             data=json.dumps(slackmsg))
         if self.debug:
-            pprint(slackmsg)
-            pprint(ret)
+            pprinterr(slackmsg)
+            pprinterr(ret)
         if ret.status_code == 200:
             return(True)
         return(False)
 
-    def logstash(self,item=None):
+    def logstash(self, item=None):
         if item is None:
             return(False)  # FIX: should not happen
         rowid = item[0]
@@ -299,7 +306,8 @@ class Humed():
         humecmd = hume['humecmd']
         timestamp = hume['timestamp']
         # hostname
-        hostname = socket.getfqdn()  # FIX: add a hostname configuration keyword
+        # FIX: add a hostname configuration keyword
+        hostname = socket.getfqdn()
         # extra field for logstash message
         extra = {
             'tags': tags,
@@ -310,9 +318,9 @@ class Humed():
         }
         if process is not None:
             extra['process'] = process
-        # Hume level does not relate completely, because 'ok' is not 
+        # Hume level does not relate completely, because 'ok' is not
         # a syslog severity, closest is info but...  TODO: think about this
-        # hume level -> syslog severity 
+        # hume level -> syslog severity
         # ----------------------------
         # ok         -> info (or default)
         # info       -> info (or default)
@@ -323,21 +331,26 @@ class Humed():
         try:
             if level == 'ok' or level == 'info':
                 # https://python-logstash-async.readthedocs.io/en/stable/usage.html#
-                self.logger.info('hume({}): {}'.format(hostname, msg), extra=extra)
+                self.logger.info('hume({}): {}'.format(hostname, msg),
+                                 extra=extra)
             elif level == 'warning':
-                self.logger.warning('hume({}) {}'.format(hostname, msg), extra=extra)
+                self.logger.warning('hume({}) {}'.format(hostname, msg),
+                                    extra=extra)
             elif level == 'error':
-                self.logger.error('hume({}): {}'.format(hostname, msg), extra=extra)
+                self.logger.error('hume({}): {}'.format(hostname, msg),
+                                  extra=extra)
             elif level == 'critical':
-                self.logger.critical('hume({}): {}'.format(hostname, msg), extra=extra)
+                self.logger.critical('hume({}): {}'.format(hostname, msg),
+                                     extra=extra)
             elif level == 'debug':
-                self.logger.debug('hume({}): {}'.format(hostname, msg), extra=extra)
+                self.logger.debug('hume({}): {}'.format(hostname, msg),
+                                  extra=extra)
         except Exception:  # TODO: improve exception handling
             return(False)
         else:
             return(True)
 
-    def syslog(self,item=None):
+    def syslog(self, item=None):
         # This function handles both local and remote syslog
         # according to logging.handlers.SysLogHandler()
         if item is None:
@@ -361,7 +374,8 @@ class Humed():
         # Extract info from hume to prepare syslog message
         # TODO: decide if we should split these in the parent caller
         #       pros: tidier
-        #       cons: makes development of other transfer methods more cumbersome?
+        #       cons: makes development of other transfer methods
+        #       more cumbersome? although... PLUGINS!
         level = hume['level']
         msg = hume['msg']
         task = hume['task']
@@ -369,8 +383,10 @@ class Humed():
         humecmd = hume['humecmd']
         timestamp = hume['timestamp']
         # hostname
-        hostname = socket.getfqdn()  # FIX: add a hostname configuration keyword
-        
+        # FIX: add a hostname configuration keyword
+        # FIX: redundant code. more reasons to PLUGINS asap
+        hostname = socket.getfqdn()
+
         # We dont have the 'extra' field for syslog, in contrast to logstash
         msg = '[{}-{}-{}] TAGS=[{}] HUMECMD={} MSG={}'.format(timestamp,
                                                               task,
@@ -383,9 +399,9 @@ class Humed():
                                       json.dumps(extra['process']))
         else:
             msg = '{} PROC=None'.format(msg)
-        # Hume level does not relate completely, because 'ok' is not 
+        # Hume level does not relate completely, because 'ok' is not
         # a syslog severity, closest is info but...  TODO: think about this
-        # hume level -> syslog severity 
+        # hume level -> syslog severity
         # ----------------------------
         # ok         -> info
         # info       -> info
@@ -440,8 +456,7 @@ class Humed():
                 rowid = self.add_transfer(hume)
                 self.queue.put(('work'))
                 if self.debug:
-                    print(rowid)
-                #self.process_transfers()
+                    printerr(rowid)
         # TODO: 2c - log errors and rowids
         # TODO: deal with exits/breaks
 
@@ -467,16 +482,16 @@ def main():
         printerr('Humed: Config file validation error: {}'.format(ex))
         sys.exit(2)
     if config.debug:
-        print('-----[ CONFIG DUMP ]-----')
-        print(config.dump())
-        print('Available Transfer Methods: {}'.format(TRANSFER_METHODS))
-        print('---[ CONFIG DUMP END ]---')
+        printerr('-----[ CONFIG DUMP ]-----')
+        printerr(config.dump())
+        printerr('Available Transfer Methods: {}'.format(TRANSFER_METHODS))
+        printerr('---[ CONFIG DUMP END ]---')
 
     # Initialize Stuff - configuration will be tested in Humed __init__
     humed = Humed(config=config)
 
     if config.debug:
-        print('Ready. serving...')
+        printerr('Ready. serving...')
     humed.run()
 
 

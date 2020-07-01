@@ -29,3 +29,17 @@ def printerr(msg):
 
 def pprinterr(o):
     pprint(o, stream=sys.stderr)
+
+def valueOrDefault(o, k, d):
+    # This function tries to find a key
+    # or an attribute named k.
+    # If it finds either, it returns d.
+    if isinstance(o, dict):
+        if k in o.keys():
+            return(o[k])
+    try:
+         r = getattr(o, k)
+    except AttributeError:
+        return(d)
+    return(r)
+

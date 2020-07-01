@@ -5,7 +5,7 @@ import glob
 import json
 import argparse
 import requests
-from humetools import printerr
+from humetools import printerr, pprinterr
 from shutil import which
 from pathlib import Path
 
@@ -13,8 +13,18 @@ from pathlib import Path
 class HumeConfig():
     def __init__(self):
         self.config = []
+        self.DOJSONMETAURL = 'http://169.254.169.254/metadata/v1.json'
 
-    def from_url(self, url, digitalocean):
+    def from_url(self, url, digitalocean=False):
+        if digitalocean is True:  # lets get some metadata
+        try:
+            do_meta = requests.get(self.DOJSONMETAURL).json()
+        except Exception as exc:
+            printerr('humeconfig: error http.get({})'.format(self.DOJSONMETAURL))
+            printerr('humeconfig: {}'.format(exc))
+            sys.exit(1)
+        finally:
+            pprint(do_meta)
         printerr('FROM_URL = {}'.format(url))
         printerr('DIGITALOCEAN = {}'.format(digitalocean))
         return(False)

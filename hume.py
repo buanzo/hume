@@ -7,13 +7,20 @@ import psutil
 import argparse
 import json
 from datetime import datetime
-from humetools import NotImplementedAction, printerr
+from humetools import NotImplementedAction, printerr, pprinterr, valueOrDefault
 
-__version__ = '1.2.10'
+__version__ = '1.2.11'
+
 
 
 class Hume():
+    LEVELS = ['info', 'ok', 'warning', 'error', 'critical', 'debug', ]
+    DEFAULT_LEVEL = 'info' 
+    NO_TAGS = []
+    NO_TASKID = ''
+    RECVTIMEOUT = 1000
     def __init__(self, args):
+        print(type(args))
         self.config = {'url': 'tcp://127.0.0.1:198'}
 
         # args
@@ -29,14 +36,29 @@ class Hume():
         self.reqObj['process'] = {}
         # Hume-specific information
         self.reqObj['hume'] = {}
-        self.reqObj['hume']['level'] = args.level
-        self.reqObj['hume']['msg'] = args.msg
-        self.reqObj['hume']['tags'] = args.tags
-        self.reqObj['hume']['task'] = args.task
-        self.reqObj['hume']['humecmd'] = args.humecmd
+        # Mandatory
         self.reqObj['hume']['timestamp'] = self.get_timestamp()
-        if self.args.append_pstree:
-            self.reqObj['process']['tree'] = self.get_pstree()
+        # Make sure to set a default value
+        self.reqObj['hume']['level'] = valueOrDefault(args,
+                                                      'level',
+                                                      Hume.DEFAULT_LEVEL)
+        self.reqObj['hume']['tags'] = valueOrDefault(args,
+                                                     'tags',
+                                                     Hume.NO_TAGS)
+        self.reqObj['hume']['task'] = valueOrDefault(args,
+                                                     'task',
+                                                     Hume.NO_TASKID)
+        self.reqObj['hume']['msg'] = valueOrDefault(args, 'msg', '')
+        # Very optional ones:
+        try:
+            self.reqObj['hume']['humecmd'] = args.humecmd
+        except AttributeError:
+            pass
+        try:
+            if self.args.append_pstree:
+                self.reqObj['process']['tree'] = self.get_pstree()
+        except AttributeError:
+            pass
 
         ln = self.get_lineno()
         if ln is not None:
@@ -69,7 +91,8 @@ class Hume():
         # self.reqObj to a special structure:
         # {'payload': ENCRYPTED_ASCII_ARMORED_CONTENT,
         #  'encrypted': True}
-        # or something like that
+        # or something like that. Also, probably kant would
+        # be useful in this context...
         if encrypt_to is None:
             HUME = self.reqObj
         else:
@@ -95,7 +118,7 @@ class Hume():
             sys.exit(4)
         poller = zmq.Poller()
         poller.register(sock, zmq.POLLIN)
-        if poller.poll(self.args.recvtimeout):
+        if poller.poll(valueOrDefault(self.args,'recvtimeout',Hume.RECVTIMEOUT)):
             msg = sock.recv_string().strip()
         else:
             print('Timeout sending hume')
@@ -139,10 +162,8 @@ class Hume():
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument("-L", "--level",
-                        choices=['ok', 'info',
-                                 'warning', 'error',
-                                 'critical', 'debug'],
-                        default="info",
+                        choices=Hume.LEVELS,
+                        default=Hume.DEFAULT_LEVEL,
                         help="Level of update to send, defaults to 'info'")
     parser.add_argument("-c", "--hume-cmd",
                         choices=['counter-start',

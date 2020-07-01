@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 import argparse
 from pprint import pprint
@@ -43,3 +44,11 @@ def valueOrDefault(o, k, d):
         return(d)
     return(r)
 
+def envOrDefault(v, d):
+    # return the contents of an env var 'v'
+    # or default d.
+    ov = os.environ.get(v)
+    if ov is None:
+        return(d)
+    else:
+        return(str(ov).strip())

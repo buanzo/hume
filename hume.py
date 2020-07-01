@@ -7,7 +7,8 @@ import psutil
 import argparse
 import json
 from datetime import datetime
-from humetools import NotImplementedAction, printerr, pprinterr, valueOrDefault
+from humetools import NotImplementedAction, printerr, pprinterr, valueOrDefault, envOrDefault
+
 
 __version__ = '1.2.11'
 
@@ -20,7 +21,6 @@ class Hume():
     NO_TASKID = ''
     RECVTIMEOUT = 1000
     def __init__(self, args):
-        print(type(args))
         self.config = {'url': 'tcp://127.0.0.1:198'}
 
         # args
@@ -176,33 +176,38 @@ def run():
                         help="[OPTIONAL] Command to attach to the update.")
     parser.add_argument("-t", "--task",
                         required=False,
-                        default='',
-                        help="[OPTIONAL] Task name, for example BACKUPTASK.")
+                        default=envOrDefault('HUME_TASKNAME',''),
+                        help='''[OPTIONAL] Task name, for example BACKUPTASK.
+Takes precedente over HUME_TASKNAME envvar.''')
     parser.add_argument('-a', '--append-pstree',
                         action='store_true',
                         help="Append process calling tree")
     parser.add_argument('-T', '--tags',
-                        type=lambda arg: arg.split(','),
                         action='append',
-                        help="Comma-separated list of tags")
+                        default=[envOrDefault('HUME_TAGS', '')],
+                        help='''Comma-separated list of tags. HUME_TAGS
+envvar contents are appended.''')
     parser.add_argument('-e', '--encrypt-to',
                         default=None,
                         action=NotImplementedAction,
                         dest='encrypt_to',
                         help="[OPTIONAL] Encrypt to this gpg pubkey id")
     parser.add_argument('--recv-timeout',
-                        default=1000,
+                        default=int(envOrDefault('HUME_RECVTIMEOUT',1000)),
                         type=int,
                         dest='recvtimeout',
                         help='''Time to wait for humed reply to hume message.
-Default 1000ms / 1 second.''')
+Default 1000ms / 1 second. Takes precedence over HUME_RECVTIMEOUT envvar.''')
     parser.add_argument('msg',
                         help="[REQUIRED] Message to include with this update")
     args = parser.parse_args()
 
     # Allows for multiple --tags tag1,tag2 --tags tag3,tag4 to be a simple list
+    fulltags = []
     if args.tags is not None:
-        args.tags = [item for sublist in args.tags for item in sublist]
+        for item in args.tags:
+            fulltags.extend(item.split(','))
+        args.tags = fulltags
     else:
         args.tags = []
 

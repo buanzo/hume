@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import logging
 from logging import getLogger
+from hume import __version__
 import sys
 import zmq
 import json
@@ -470,6 +471,9 @@ def main():
                         default=False,
                         action='store_true',
                         help='Enables debug messages')
+    parser.add_argument('--version',
+                        action='version',
+                        version='Hume Daemon v{} by Buanzo'.format(__version__))
     args = parser.parse_args()
     config.set_args(args)
     config.debug = args.debug

@@ -161,6 +161,9 @@ class Hume():
 
 def run():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--version',
+                        action='version',
+                        version='Hume Client v{} by Buanzo'.format(__version__))
     parser.add_argument("-L", "--level",
                         choices=Hume.LEVELS,
                         default=Hume.DEFAULT_LEVEL,

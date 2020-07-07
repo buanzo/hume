@@ -17,6 +17,7 @@ class HumeConfig():
 
     def from_url(self, url, digitalocean=False):
         if digitalocean is True:  # lets get some metadata
+            pass  # TODO
         try:
             do_meta = requests.get(self.DOJSONMETAURL).json()
         except Exception as exc:

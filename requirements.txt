@@ -1,6 +1,7 @@
-python_systemd==0.0.9
 pid==3.0.3
-confuse==1.1.0
-requests==2.20.0
 psutil==5.7.0
+requests>=2.20.0
+python_logstash_async==1.6.4
+confuse==1.1.0
 pyzmq==19.0.1
+webhook_listener==0.0.3

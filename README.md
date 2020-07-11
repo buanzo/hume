@@ -165,5 +165,24 @@ The logstash support uses python-logstash-async.
 
 ## TODO
 * Make humeconfig's --from-url work
-* Add systemd unit creation to humeconfig
+* Implement Jinja for templating, first use case in Slack Block Kit.
+* add support to managing issues from within hume, example
 
+```
+~$ humeconfig --update --github $GITHUB_TOKEN
+Github Token configured.
+Config file updated.
+
+~$ hume --beer --deliver-to=buanzo
+hume: No such command
+
+~$ hume --task hume --level critical --open-issue "Hume support for beer brewing"
+Github Issue #45 created: github.com/hume/issues/45
+  
+[ some days later ]
+
+~$ hume --beer --deliver-to=buanzo --verbose
+OK
+~$ hume --task hume --level ok --fix-issue 45
+Github Issue #45 fixed and closed
+```

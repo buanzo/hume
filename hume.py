@@ -10,7 +10,7 @@ from datetime import datetime
 from humetools import NotImplementedAction, printerr, pprinterr, valueOrDefault, envOrDefault
 
 
-__version__ = '1.2.11'
+__version__ = '1.2.12'
 
 
 

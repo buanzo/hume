@@ -60,6 +60,7 @@ config_template = {  # TODO: add debug. check confuse.Bool()
         'webhook_error': confuse.String(),
         'webhook_critical': confuse.String(),
         'webhook_debug': confuse.String(),
+        'template': confuse.String(),  # TODO: use ['template'].as_filename()
     },
 }
 
@@ -453,6 +454,9 @@ class Humed():
                 printerr('CTRL-C called, exiting now')
                 sys.exit(255)
             else:
+                # TODO: validate hume HERE and provide response accordingly
+                # CLient MAY timeout before this happens so this SHOULD
+                # NOT affect be a deal breaker
                 sock.send_string('OK')
                 rowid = self.add_transfer(hume)
                 self.queue.put(('work'))

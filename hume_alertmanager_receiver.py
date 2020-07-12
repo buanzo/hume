@@ -35,7 +35,7 @@ def construct_hume(alert):
     except Exception:
         level = 'warning'  # Sensible default? alpha software, people!
     try:
-        task = '{}[{}]'.format(labels['instance_name'],labels['ip'])
+        task = '{}[{}]'.format(labels['instance_name'], labels['ip'])
     except Exception:
         task = 'unknown_task'
     try:
@@ -66,8 +66,9 @@ def construct_hume(alert):
     humePkt = {'level': level,
                'msg': msg,
                'tags': tags,
-               'task': task,}
+               'task': task}
     return(humePkt)
+
 
 def process_alertmanager_request(request, *args, **kwargs):
     method = request.method
@@ -92,8 +93,8 @@ def process_alertmanager_request(request, *args, **kwargs):
             return
     else:
         return
-    #print('DECODED JSON BODY:')
-    #pprint(jBody)
+    # print('DECODED JSON BODY:')
+    # pprint(jBody)
     pprint(jBody['alerts'])
     for alert in jBody['alerts']:
         print('ALERTA-------')
@@ -112,22 +113,22 @@ def run():
     parser.add_argument('--version',
                         action='version',
                         version=__version_str)
-    parser.add_argument('-l','--listen',
+    parser.add_argument('-l', '--listen',
                         default='127.0.0.1',
                         dest='host',
-                        help='Listening IP for receiver. Default is 127.0.0.1.')
-    parser.add_argument('-p','--port',
+                        help='Listening IP for receiver. Default: 127.0.0.1.')
+    parser.add_argument('-p', '--port',
                         default=8090,
                         type=int,
                         nargs=1,
                         dest='port',
                         help='Listening port for receiver. Default is 8090.')
-    parser.add_argument('-d','--debug',
+    parser.add_argument('-d', '--debug',
                         default=False,
                         action='store_true',
                         dest='debug',
                         help='Enables debugging messages')
-    parser.add_argument('-t','--threadpoolsize',
+    parser.add_argument('-t', '--threadpoolsize',
                         default=10,
                         type=int,
                         nargs=1,

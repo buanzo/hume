@@ -21,8 +21,9 @@ class HumeConfig():
         try:
             do_meta = requests.get(self.DOJSONMETAURL).json()
         except Exception as exc:
-            printerr('humeconfig: error http.get({})'.format(self.DOJSONMETAURL))
-            printerr('humeconfig: {}'.format(exc))
+            printerr('humeconfig error:')
+            printerr('http.get({})'.format(self.DOJSONMETAURL))
+            printerr('{}'.format(exc))
             sys.exit(1)
         finally:
             pprint(do_meta)

@@ -477,7 +477,7 @@ def main():
                         help='Enables debug messages')
     parser.add_argument('--version',
                         action='version',
-                        version='Hume Daemon v{} by Buanzo'.format(__version__))
+                        version='HumeDaemon v{} by Buanzo'.format(__version__))
     args = parser.parse_args()
     config.set_args(args)
     config.debug = args.debug

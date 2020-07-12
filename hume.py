@@ -7,19 +7,21 @@ import psutil
 import argparse
 import json
 from datetime import datetime
-from humetools import NotImplementedAction, printerr, pprinterr, valueOrDefault, envOrDefault
+from humetools import (
+    NotImplementedAction, printerr, pprinterr, valueOrDefault, envOrDefault
+)
 
 
 __version__ = '1.2.12'
 
 
-
 class Hume():
     LEVELS = ['info', 'ok', 'warning', 'error', 'critical', 'debug', ]
-    DEFAULT_LEVEL = 'info' 
+    DEFAULT_LEVEL = 'info'
     NO_TAGS = []
     NO_TASKID = ''
     RECVTIMEOUT = 1000
+
     def __init__(self, args):
         self.config = {'url': 'tcp://127.0.0.1:198'}
 
@@ -118,7 +120,9 @@ class Hume():
             sys.exit(4)
         poller = zmq.Poller()
         poller.register(sock, zmq.POLLIN)
-        if poller.poll(valueOrDefault(self.args,'recvtimeout',Hume.RECVTIMEOUT)):
+        if poller.poll(valueOrDefault(self.args,
+                                      'recvtimeout',
+                                      Hume.RECVTIMEOUT)):
             msg = sock.recv_string().strip()
         else:
             print('Timeout sending hume')
@@ -163,7 +167,7 @@ def run():
     parser = argparse.ArgumentParser()
     parser.add_argument('--version',
                         action='version',
-                        version='Hume Client v{} by Buanzo'.format(__version__))
+                        version='HumeClient v{} by Buanzo'.format(__version__))
     parser.add_argument("-L", "--level",
                         choices=Hume.LEVELS,
                         default=Hume.DEFAULT_LEVEL,
@@ -179,7 +183,7 @@ def run():
                         help="[OPTIONAL] Command to attach to the update.")
     parser.add_argument("-t", "--task",
                         required=False,
-                        default=envOrDefault('HUME_TASKNAME',''),
+                        default=envOrDefault('HUME_TASKNAME', ''),
                         help='''[OPTIONAL] Task name, for example BACKUPTASK.
 Takes precedente over HUME_TASKNAME envvar.''')
     parser.add_argument('-a', '--append-pstree',
@@ -196,7 +200,7 @@ envvar contents are appended.''')
                         dest='encrypt_to',
                         help="[OPTIONAL] Encrypt to this gpg pubkey id")
     parser.add_argument('--recv-timeout',
-                        default=int(envOrDefault('HUME_RECVTIMEOUT',1000)),
+                        default=int(envOrDefault('HUME_RECVTIMEOUT', 1000)),
                         type=int,
                         dest='recvtimeout',
                         help='''Time to wait for humed reply to hume message.

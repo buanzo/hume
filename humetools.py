@@ -4,6 +4,7 @@ import sys
 import argparse
 from pprint import pprint
 
+
 class NotImplementedAction(argparse.Action):
     """ This class allows to work on getting your Argparse object
     ready even if nothing useful happens when used.
@@ -28,8 +29,10 @@ class NotImplementedAction(argparse.Action):
 def printerr(msg):
     print("{}".format(msg), file=sys.stderr)
 
+
 def pprinterr(o):
     pprint(o, stream=sys.stderr)
+
 
 def valueOrDefault(o, k, d):
     # This function tries to find a key
@@ -39,10 +42,11 @@ def valueOrDefault(o, k, d):
         if k in o.keys():
             return(o[k])
     try:
-         r = getattr(o, k)
+        r = getattr(o, k)
     except AttributeError:
         return(d)
     return(r)
+
 
 def envOrDefault(v, d):
     # return the contents of an env var 'v'

@@ -239,6 +239,7 @@ class Humed():
         except Exception as ex:
             return(False)  # FIX: malformed json at this stage? mmm
         hume = humepkt['hume']
+        sender_host = humepkt['hostname']
         if self.debug:
             pprinterr(hume)
         level = hume['level']
@@ -251,11 +252,12 @@ class Humed():
             tagstr = ','.join(tags)
         # Make sure to read:
         # https://api.slack.com/reference/surfaces/formatting
-        m = "[{ts}] - {level} {task}: '{msg}' {tagstr}".format(level=level,
-                                                               msg=msg,
-                                                               task=task,
-                                                               ts=ts,
-                                                               tagstr=tagstr)
+        m = "{} [{ts}] - {level} {task}: '{msg}' {tagstr}".format(sender_host,
+                                                                  level=level,
+                                                                  msg=msg,
+                                                                  task=task,
+                                                                  ts=ts,
+                                                                  tagstr=tagstr)
         # https://api.slack.com/reference/surfaces/formatting#escaping
         m = m.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
         # Remember, text becomes a fallback if 'blocks' are in use:
@@ -295,6 +297,7 @@ class Humed():
         except Exception as ex:
             return(False)  # FIX: malformed json at this stage? mmm
         hume = humepkt['hume']
+        sender_host = humepkt['hostname']
         if 'process' in humepkt.keys():  # This data is optional in hume (-a)
             process = humepkt['process']
         else:
@@ -312,6 +315,7 @@ class Humed():
         hostname = socket.getfqdn()
         # extra field for logstash message
         extra = {
+            'hostname': sender_host,
             'tags': tags,
             'task': task,
             'humelevel': level,
@@ -366,6 +370,7 @@ class Humed():
         except Exception as ex:
             return(False)  # FIX: malformed json at this stage? mmm
         hume = humepkt['hume']
+        sender_host = humepkt['hostname']
 
         # Optional data
         if 'process' in humepkt.keys():  # This data is optional in hume (-a)
@@ -390,12 +395,11 @@ class Humed():
         hostname = socket.getfqdn()
 
         # We dont have the 'extra' field for syslog, in contrast to logstash
-        msg = '[{}-{}-{}] TAGS=[{}] HUMECMD={} MSG={}'.format(timestamp,
-                                                              task,
-                                                              humelevel,
-                                                              tags,
-                                                              humecmd,
-                                                              msg)
+        msg = '{} {} {} [{}] {} | TAGS={}'.format(sender_host,
+                                                  task,
+                                                  humelevel,
+                                                  msg,
+                                                  tags)
         if process is not None:
             msg = '{} PROC={}'.format(msg,
                                       json.dumps(extra['process']))

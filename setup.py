@@ -22,8 +22,7 @@ with open(path.join(this_directory, 'README.txt'), encoding='utf-8') as f:
 
 setup(name='humed',
       version=get_version(),
-      description="""Agnostic sysadmin/devops instrumentation tool. Includes
-hume and humed.""",
+      description="Agnostic sysadmin/devops instrumentation tool. Includes hume and humed.",
       long_description=long_description,
       keywords="""hume, humed, logstash, slack, syslog, kant, fluentd, devops,
 sysadmin, agnostic, prometheus""",

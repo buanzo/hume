@@ -14,7 +14,7 @@ from humetools import (
 )
 
 
-__version__ = '1.2.12'
+__version__ = '1.2.13'
 
 
 class Hume():
@@ -226,7 +226,8 @@ message. Defaults to detected hostname "{}"'''.format(platform.node()))
     fulltags = []
     if args.tags is not None:
         for item in args.tags:
-            fulltags.extend(item.split(','))
+            if len(item) > 0:
+                fulltags.extend(item.split(','))
         args.tags = fulltags
     else:
         args.tags = []

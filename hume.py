@@ -6,9 +6,11 @@ import stat
 import psutil
 import argparse
 import json
+import platform
 from datetime import datetime
 from humetools import (
-    NotImplementedAction, printerr, pprinterr, valueOrDefault, envOrDefault
+    NotImplementedAction, printerr, pprinterr, valueOrDefault, envOrDefault,
+    is_valid_hostname
 )
 
 
@@ -34,6 +36,8 @@ class Hume():
         # in such a way that the code can grow organically
         # and be coder-assistive
         self.reqObj = {}
+        # Stores hostname
+        self.reqObj['hostname'] = args.hostname
         # To store information related to how hume was executed
         self.reqObj['process'] = {}
         # Hume-specific information
@@ -205,9 +209,18 @@ envvar contents are appended.''')
                         dest='recvtimeout',
                         help='''Time to wait for humed reply to hume message.
 Default 1000ms / 1 second. Takes precedence over HUME_RECVTIMEOUT envvar.''')
+    parser.add_argument('--hostname',
+                        default=platform.node(),
+                        dest='hostname',
+                        help='''[OPTIONAL] Sets hostname to use in hume
+message. Defaults to detected hostname "{}"'''.format(platform.node()))
     parser.add_argument('msg',
                         help="[REQUIRED] Message to include with this update")
     args = parser.parse_args()
+    
+    if not is_valid_hostname(args.hostname):
+        printerr('Hostname is not valid. Ignoring hume.')
+        sys.exit(1)
 
     # Allows for multiple --tags tag1,tag2 --tags tag3,tag4 to be a simple list
     fulltags = []

@@ -15,7 +15,7 @@ from logging.handlers import SysLogHandler
 from pid.decorator import pidfile
 from queue import Queue
 from threading import Thread
-from humetools import printerr, pprinterr
+from humetools import printerr, pprinterr, is_valid_hostname
 # The Confuse library is awesome.
 import confuse
 
@@ -428,6 +428,18 @@ class Humed():
         else:
             return(True)
 
+    def is_valid_hume(self,hume):
+        # This function checks incoming hume structure
+        # and values.
+        # Returns: True or False
+        if 'hostname' in hume.keys():
+            if not is_valid_hostname(hume['hostname']):
+                return(False)
+        else:  # hostname MUST exist and be valid
+            return(False)
+        pprinterr(hume)
+        return(True)  # FIX: Change to False once all cases are considered
+
     def run(self):
         # Humed main loop
         sock = zmq.Context().socket(zmq.REP)
@@ -458,12 +470,15 @@ class Humed():
                 # CLient MAY timeout before this happens so this SHOULD
                 # NOT affect be a deal breaker
                 sock.send_string('OK')
-                rowid = self.add_transfer(hume)
-                self.queue.put(('work'))
-                if self.debug:
-                    printerr(rowid)
-        # TODO: 2c - log errors and rowids
-        # TODO: deal with exits/breaks
+                if self.is_valid_hume(hume):
+                    rowid = self.add_transfer(hume)  # TODO: verify ret
+                    if self.debug:
+                        printerr(rowid)
+                    self.queue.put(('work'))
+                else:
+                    if self.debug:
+                        printerr('Received hume is not valid:')
+                        pprinterr(hume)
 
 
 @pidfile()

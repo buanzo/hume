@@ -14,7 +14,7 @@ from humetools import (
 )
 
 
-__version__ = '1.2.14'
+__version__ = '1.2.15'
 
 
 class Hume():
@@ -29,6 +29,11 @@ class Hume():
 
         # args
         self.args = args
+        
+        try:
+            self.verbose = self.args.verbose
+        except AttributeError:
+            self.verbose = False
 
         # Prepare object to send
         # Might end up moving some of this stuff around
@@ -111,11 +116,15 @@ class Hume():
         # FIX: see if we can make REP/REQ work as required
         sock = zmq.Context().socket(zmq.REQ)
         sock.setsockopt(zmq.LINGER, 0)
+        if self.verbose:
+            printerr('Hume: attempting connection to {}'.format(self.config['url']))
         try:
             sock.connect(self.config['url'])
         except zmq.ZMQError as exc:
             print(exc)
             sys.exit(2)
+        if self.verbose:
+            printerr('Hume: Sending hume...')
         try:
             x = sock.send_string(json.dumps(self.reqObj))
         except zmq.ZMQError as exc:
@@ -130,9 +139,12 @@ class Hume():
         if poller.poll(valueOrDefault(self.args,
                                       'recvtimeout',
                                       Hume.RECVTIMEOUT)):
+            if self.verbose:
+                printerr('Hume: response received within timeout')
             msg = sock.recv_string().strip()
         else:
-            print('Timeout sending hume')
+            printerr('Timeout sending hume')
+            sock.close()
             sys.exit(5)
         sock.close()
         # TODO: validate OK vs other errors. needs protocol def.
@@ -175,6 +187,9 @@ def run():
     parser.add_argument('--version',
                         action='version',
                         version='HumeClient v{} by Buanzo'.format(__version__))
+    parser.add_argument('--verbose',
+                        action='store_true',
+                        dest='verbose')
     parser.add_argument("-L", "--level",
                         choices=Hume.LEVELS,
                         default=Hume.DEFAULT_LEVEL,

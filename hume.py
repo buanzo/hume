@@ -142,7 +142,7 @@ class Hume():
         else:
             printerr('Timeout sending hume')
             sock.close()
-            sys.exit(5)
+            return
         sock.close()
         # TODO: validate OK vs other errors. needs protocol def.
         if msg == 'OK':
@@ -249,7 +249,11 @@ message. Defaults to detected hostname "{}"'''.format(platform.node()))
 
     # Now we call the send method while initializing Hume() directly
     # with the parsed args.
+    if args.verbose:
+        print('About to send hume...')
     r = Hume(args).send(encrypt_to=args.encrypt_to)
+    if args.verbose:
+        print('Back from huming.')
     if r is True:
         sys.exit(0)
     sys.exit(1)

@@ -13,6 +13,7 @@ import socket
 import requests
 from logging.handlers import SysLogHandler
 from pid.decorator import pidfile
+from hume import Hume
 from queue import Queue
 from threading import Thread
 from humetools import printerr, pprinterr, is_valid_hostname
@@ -450,6 +451,11 @@ class Humed():
         sock.bind(self.endpoint)
         # Check for pending transfers first
         self.queue.put(('work'))
+        # Send 'ready' hume on debug channel
+        msg = {'level': 'debug',
+               'msg': 'Humed is ready to serve',
+               'task': 'HUMED_STARTUP'}
+        Hume(msg).send()
         # Await hume message over zmp and dispatch job thru queue
         while True:
             hume = {}

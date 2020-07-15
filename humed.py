@@ -441,7 +441,6 @@ class Humed():
                 return(False)
         else:  # hostname MUST exist and be valid
             return(False)
-        pprinterr(hume)
         return(True)  # FIX: Change to False once all cases are considered
 
     def run(self):

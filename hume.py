@@ -14,7 +14,7 @@ from humetools import (
 )
 
 
-__version__ = '1.2.13'
+__version__ = '1.2.14'
 
 
 class Hume():
@@ -37,7 +37,10 @@ class Hume():
         # and be coder-assistive
         self.reqObj = {}
         # Stores hostname
-        self.reqObj['hostname'] = args.hostname
+        try:
+            self.reqObj['hostname'] = args.hostname
+        except AttributeError:
+            self.reqObj['hostname'] = platform.node()
         # To store information related to how hume was executed
         self.reqObj['process'] = {}
         # Hume-specific information

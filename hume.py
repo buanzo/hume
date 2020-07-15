@@ -14,7 +14,7 @@ from humetools import (
 )
 
 
-__version__ = '1.2.15'
+__version__ = '1.2.16'
 
 
 class Hume():
@@ -30,10 +30,7 @@ class Hume():
         # args
         self.args = args
         
-        try:
-            self.verbose = self.args.verbose
-        except AttributeError:
-            self.verbose = False
+        self.verbose = valueOrDefault(args,'verbose',False)
 
         # Prepare object to send
         # Might end up moving some of this stuff around
@@ -252,7 +249,7 @@ message. Defaults to detected hostname "{}"'''.format(platform.node()))
 
     # Now we call the send method while initializing Hume() directly
     # with the parsed args.
-    r = Hume(args).send(encrypt_to=args.encrypt_to)
+    r = Hume(args).send(encrypt_to=args.encrypt_to,verbose=args.verbose)
     if r is True:
         sys.exit(0)
     sys.exit(1)

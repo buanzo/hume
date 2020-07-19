@@ -304,7 +304,10 @@ class Humed():
         m = m.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
         # Remember, text becomes a fallback if 'blocks' are in use:
         # https://api.slack.com/messaging/composing/layouts#adding-blocks
-        basetpl = self.transfer_method_args['template_base']
+        try:
+            basetpl = self.transfer_method_args['template_base']
+        except KeyError:
+            basetpl = 'default'
         slackmsg = self.renderer.render(base_template=basetpl,
                                         level=level,
                                         humePkt=humepkt)

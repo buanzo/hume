@@ -16,7 +16,7 @@ from pid.decorator import pidfile
 from hume import Hume
 from queue import Queue
 from threading import Thread
-from humetools import printerr, pprinterr, is_valid_hostname
+from humetools import printerr, pprinterr, is_valid_hostname, HumeRenderer
 # The Confuse library is awesome.
 import confuse
 
@@ -37,6 +37,30 @@ else:
     # You gotta love try/except/else/finally
     TRANSFER_METHODS.append('logstash')
 
+# On Humed() __init__, we scan the templates dir and get
+# base template names for each transfer_method.
+# We save that in a dictionary.
+# A default base template will ship with humed for each transfer_method.
+# Currently, only slack is there.
+# templates_dir = {config_dir}/templates/{TRANSFER_METHOD}/{BASE}[_level].tpl
+#
+# This way, if user wants to use a template base 'example' in the 'slack'
+# transfer_method, then humed will apply the available template by level:
+# For warning level message via slack using 'example':
+# template = /etc/humed/templates/slack/example_warning.tpl
+# If level-specific template is not available, it tries default.
+# If default-level transfer method specific template is not available,
+# it tries level-specific transfer default.
+# If that's not there, it goes default_default.
+# If THAT"s not there your humed is bonked but it fallbacks to old style.
+#
+# This way you can integrate different priority levels with custom
+# coloring, action links, etc.
+#
+BASE_TEMPLATES = {}
+for method in TRANSFER_METHODS:
+    BASE_TEMPLATES[method] = []
+
 # TODO: add determination for fluentd-logger, we still need to find a GOOD
 # implementation
 
@@ -46,14 +70,19 @@ else:
 config_template = {  # TODO: add debug. check confuse.Bool()
     'endpoint': confuse.String(),
     'transfer_method': confuse.OneOf(TRANSFER_METHODS),
+    'syslog': {
+        'template_base': confuse.OneOf(BASE_TEMPLATES['syslog']),
+    },
     'rsyslog': {
         'server': confuse.String(),
         'proto': confuse.OneOf(['tcp', 'udp']),
         'port': confuse.Integer(),
+        'template_base': confuse.OneOf(BASE_TEMPLATES['rsyslog']),
     },
     'logstash': {
         'host': confuse.String(),
         'port': confuse.Integer(),
+        'template_base': confuse.OneOf(BASE_TEMPLATES['logstash']),
     },
     'slack': {
         'webhook_default': confuse.String(),  # for ok and info messages
@@ -61,7 +90,7 @@ config_template = {  # TODO: add debug. check confuse.Bool()
         'webhook_error': confuse.String(),
         'webhook_critical': confuse.String(),
         'webhook_debug': confuse.String(),
-        'template': confuse.String(),  # TODO: use ['template'].as_filename()
+        'template_base': confuse.OneOf(BASE_TEMPLATES['slack']),
     },
 }
 
@@ -84,7 +113,17 @@ class Humed():
         worker.daemon = True
         worker.start()
 
-        # TODO: improve
+        # HumeRenderer
+        templates_dir = '{}/templates'.format(config.config_dir(),
+                                              self.transfer_method)
+        if self.debug:
+            printerr('Templates_dir = {}'.format(templates_dir))
+        self.renderer = HumeRenderer(templates_dir=templates_dir,
+                                     transfer_method=self.transfer_method,
+                                     debug=self.debug)
+        BASE_TEMPLATES[self.transfer_method] = self.renderer.available_bases()
+
+        # TODO: improve, and support multi transfer methods, multi renders
         self.logger = getLogger('humed-{}'.format(self.transfer_method))
         self.logger.setLevel(logging.INFO)
         if self.transfer_method is 'logstash':
@@ -238,6 +277,8 @@ class Humed():
         try:
             humepkt = json.loads(item[3])
         except Exception as ex:
+            if self.debug:
+                printerr("Malformed json packet ROWID#{}.".format(rowid))
             return(False)  # FIX: malformed json at this stage? mmm
         hume = humepkt['hume']
         sender_host = humepkt['hostname']
@@ -263,8 +304,18 @@ class Humed():
         m = m.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
         # Remember, text becomes a fallback if 'blocks' are in use:
         # https://api.slack.com/messaging/composing/layouts#adding-blocks
-        slackmsg = {'text': m, }
-        # TODO: use blocks for a nicer message format
+        basetpl = self.transfer_method_args['template_base']
+        slackmsg = self.renderer.render(base_template=basetpl,
+                                        level=level,
+                                        humePkt=humepkt)
+        if slackmsg is None:
+            # Fallback to text, no template worked
+            if self.debug:
+                printerr('Humed: no templates were available, fallbacking...')
+            slackmsg = {'text', m,} # TODO: move construction of m here
+            data=json.dumps(slackmsg)
+        else:
+            data=slackmsg
         # choose appropriate channel by config key
         if level in ['ok', 'info']:
             chan = 'webhook_default'
@@ -280,9 +331,8 @@ class Humed():
                                                            level))
         ret = requests.post(webhook,
                             headers={'Content-Type': 'application/json'},
-                            data=json.dumps(slackmsg))
+                            data=data)
         if self.debug:
-            pprinterr(slackmsg)
             pprinterr(ret)
         if ret.status_code == 200:
             return(True)
@@ -507,7 +557,8 @@ def main():
     config.debug = args.debug
     try:
         valid = config.get(template=config_template)
-    except confuse.NotFoundError:
+    except confuse.NotFoundError as exc:
+        printerr(exc)
         pass
     except Exception as ex:
         pprinterr(ex)

@@ -276,4 +276,5 @@ WantedBy=default.target
 
 
 if __name__ == '__main__':
+    # TODO: add template options
     run()

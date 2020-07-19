@@ -140,7 +140,8 @@ class Hume():
                 printerr('Hume: response received within timeout')
             msg = sock.recv_string().strip()
         else:
-            printerr('Timeout sending hume')
+            if self.verbose:
+                printerr('Timeout sending hume')
             sock.close()
             return
         sock.close()

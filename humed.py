@@ -558,7 +558,8 @@ def main():
     try:
         valid = config.get(template=config_template)
     except confuse.NotFoundError as exc:
-        printerr(exc)
+        printerr('Humed: Configuration validation results:')
+        printerr('       {}'.format(exc))
         pass
     except Exception as ex:
         pprinterr(ex)

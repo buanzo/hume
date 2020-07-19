@@ -86,9 +86,7 @@ class HumeRenderer():
         # i.e we return a list of NAMEs
         ret = []
         tpls = glob('{}/*_default.tpl'.format(self.tplDir), recursive=False)
-        pprinterr(tpls)
         for item in tpls:
-            printerr(item)
             ret.append(os.path.basename(item).split('_default.tpl')[0])
         return(ret)
 
@@ -105,7 +103,6 @@ class HumeRenderer():
         # ERROR
         # Default level is info, we can get it from humePkt but...
         # no need to re-execute
-        pprinterr(humePkt)
         if base_template is None:
             raise(ValueError('render: base_template needs to be specified'))
         if humePkt is None:

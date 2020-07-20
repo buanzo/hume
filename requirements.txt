@@ -5,4 +5,4 @@ python_logstash_async==1.6.4
 confuse==1.1.0
 pyzmq==19.0.1
 webhook_listener>=0.0.3
-Jinja2==2.10
+Jinja2>=2.10.1

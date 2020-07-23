@@ -71,6 +71,23 @@ class HumeRenderer():
         }
       ]
     },
+{% if hume.extra.items()|count > 0 %}
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Extra fields:*\n"
+      },
+      "fields": [
+      {% for key, value in hume.extra.items() %}
+        {
+          "type": "mrkdwn",
+          "text": "*{{ key }}:*\n{{ value }}"
+        },
+      {% endfor %}
+      ]
+    },
+{% endif %}
     {
         "type": "divider"
     },

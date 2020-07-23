@@ -39,10 +39,9 @@ class Hume():
         # and be coder-assistive
         self.reqObj = {}
         # Stores hostname
-        try:
-            self.reqObj['hostname'] = args.hostname
-        except AttributeError:
-            self.reqObj['hostname'] = platform.node()
+        self.reqObj['hostname'] = valueOrDefault(args,
+                                                 'hostname',
+                                                 platform.node())
         # To store information related to how hume was executed
         self.reqObj['process'] = {}
         # Hume-specific information
@@ -60,13 +59,15 @@ class Hume():
                                                      'task',
                                                      Hume.NO_TASKID)
         self.reqObj['hume']['msg'] = valueOrDefault(args, 'msg', '')
+
+        # The extra field in hume is used to store additional
+        # information, and is not subject to hume design parameters.
+        self.reqObj['hume']['extra'] = valueOrDefault(args,
+                                                      'extra',
+                                                      {})
         # Very optional ones:
         try:
-            self.reqObj['hume']['humecmd'] = args.humecmd
-        except AttributeError:
-            pass
-        try:
-            if self.args.append_pstree:
+            if self.args.append_pstree or 'append_pstree' in self.args.keys():
                 self.reqObj['process']['tree'] = self.get_pstree()
         except AttributeError:
             pass

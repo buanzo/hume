@@ -8,6 +8,7 @@ from hume import Hume
 msg = {
 #    'level': 'warning',
     'msg': 'Hello World',
+    'extra': {'instance_name': 'hola'},
 #    'tags': ['test','example'],
     'task': 'EXAMPLE',}
 

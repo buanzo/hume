@@ -9,6 +9,7 @@
 # https://prometheus.io/blog/2016/03/03/custom-alertmanager-templates/
 #
 # Author: Buanzo
+
 import argparse
 from hume import Hume
 import json
@@ -30,20 +31,46 @@ def construct_hume(alert):
         status = alert['status'].strip()
     except Exception:
         status = 'unknown_status'
+
     try:
         level = labels['severity']
     except Exception:
         level = 'warning'  # Sensible default? alpha software, people!
+
     try:
-        task = '{}[{}]'.format(labels['instance_name'], labels['ip'])
+        #task = '{}[{}]'.format(labels['instance_name'], labels['ip'])
+        task = labels['name']
     except Exception:
-        task = 'unknown_task'
+        if 'instance_name' in labels.keys():
+            task = labels['instance_name']
+        else:
+            task = 'Alertmanager'
+
+    tags = []
     try:
-        tags = []
+        tags.append(labels['alertname'])
+    except Exception:
+        pass
+
+    try:
+        tags.append(labels['job'])
+    except Exception:
+        pass
+
+    try:
+        tags.append(labels['type'])
+    except Exception:
+        pass
+
+    try:
         tags.append(labels['region'])
+    except Exception:
+        pass
+
+    try:
         tags.append(labels['flavor'])
     except Exception:
-        tags = []
+        pass
 
     try:
         startsAt = alert['startsAt']
@@ -52,21 +79,35 @@ def construct_hume(alert):
         startsAt = '{}Z'.format(d.isoformat("T"))
 
     try:
-        summary = alert['annotations']['description']
+#        summary = alert['annotations']['description']
+        summary = alert['annotations']['summary']
     except Exception:
         summary = 'n/a'
 
+# TODO: hume.msg = "STATUS: "+status+"\nDETAILS: "+annotations.summary
     try:
-        alertname = labels['alertname']
+        status = alert['status']
     except Exception:
-        alertname = 'n/a'
-    msg = "Current Status: {} - Annotation: {} - Date: {}".format(status,
-                                                                  summary,
-                                                                  startsAt)
+        status = 'n/a'
+    msg = "Alert is {}.\n\n{}".format(status,
+                                           summary)
+    try:
+        hostname = labels['instance'].split(':')[0]
+    except Exception:
+        hostname = 'n/a'
+
+    extra = {}
+    try:
+        extra['instance_name'] = labels['instance_name']
+    except Exception:
+        extra = None
+
     humePkt = {'level': level,
                'msg': msg,
                'tags': tags,
                'task': task}
+    if extra is not None:
+        humePkt['extra'] = extra
     return(humePkt)
 
 
@@ -95,9 +136,11 @@ def process_alertmanager_request(request, *args, **kwargs):
         return
     # print('DECODED JSON BODY:')
     # pprint(jBody)
-    pprint(jBody['alerts'])
+    #pprint(jBody['alerts'])
     for alert in jBody['alerts']:
-        print('ALERTA-------')
+        print('ALERTA:')
+        pprint(alert)
+        print('HUME:')
         humePkt = construct_hume(alert)
         pprint(humePkt)
     try:

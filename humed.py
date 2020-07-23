@@ -11,6 +11,7 @@ import datetime
 import argparse
 import socket
 import requests
+import platform
 from logging.handlers import SysLogHandler
 from pid.decorator import pidfile
 from hume import Hume

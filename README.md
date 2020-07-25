@@ -152,6 +152,22 @@ python3.
 
 The logstash support uses python-logstash-async.
 
+# Prometheus compatibility
+
+Humed should maintain the last status regarding a particular host:task
+(humed might end up receiving information from more than one host, specially
+in containerized environments?).
+
+That data is valid for a time series based scraper such as Prometheus.
+
+An in-memory db should work in this scenario, with possibly a persistent option.
+
+KEY = host:task?
+VALUES = All of HumePkt? timestamp included.
+
+The MSG might not end up being graphed... :P but Grafana for instance supports
+Text panels. It might be nice to be able to design a Hume Tasks dashboard.
+
 # DEVELOPMENT NOTES
 
 ## Define Basic CLI usage
@@ -165,8 +181,7 @@ The logstash support uses python-logstash-async.
 
 ## TODO
 * Make humeconfig's --from-url work
-* Implement Jinja for templating, first use case in Slack Block Kit.
-* add support to managing issues from within hume, example
+* add support to managing issues from within hume, example:
 
 ```
 ~$ humeconfig --update --github $GITHUB_TOKEN

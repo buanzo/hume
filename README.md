@@ -119,6 +119,28 @@ follow the devops pattern.
 * watchdog command: 'This task needs to run daily' -> cron failed? hume
 command that lets the watchdog know it is effectively running daily.
 
+* A publisher/subscriber subsystem?
+
+Maybe one wants to propagate an event.
+
+Maybe we want to set some value for others to consume (this could be related to Prometheus idea below)
+
+* Prometheus compatibility
+
+Humed should maintain the last status regarding a particular host:task
+(humed might end up receiving information from more than one host, specially
+in containerized environments?).
+
+That data is valid for a time series based scraper such as Prometheus.
+
+An in-memory db should work in this scenario, with possibly a persistent option.
+
+KEY = host:task?
+VALUES = All of HumePkt? timestamp included.
+
+The MSG might not end up being graphed... :P but Grafana for instance supports
+Text panels. It might be nice to be able to design a Hume Tasks dashboard.
+
 
 # Components
 
@@ -152,21 +174,6 @@ python3.
 
 The logstash support uses python-logstash-async.
 
-# Prometheus compatibility
-
-Humed should maintain the last status regarding a particular host:task
-(humed might end up receiving information from more than one host, specially
-in containerized environments?).
-
-That data is valid for a time series based scraper such as Prometheus.
-
-An in-memory db should work in this scenario, with possibly a persistent option.
-
-KEY = host:task?
-VALUES = All of HumePkt? timestamp included.
-
-The MSG might not end up being graphed... :P but Grafana for instance supports
-Text panels. It might be nice to be able to design a Hume Tasks dashboard.
 
 # DEVELOPMENT NOTES
 

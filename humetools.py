@@ -6,6 +6,8 @@ from glob import glob
 import argparse
 from pprint import pprint
 from jinja2 import FileSystemLoader, Environment, TemplateNotFound, FunctionLoader
+from collections import OrderedDict
+
 
 class HumeRenderer():
     def __init__(self,templates_dir=None, transfer_method=None, debug=False):
@@ -131,6 +133,9 @@ class HumeRenderer():
         options.append('{}_default.tpl'.format(base_template))
         options.append('default_{}.tpl'.format(level))
         options.append('default_default.tpl')
+
+        # base_template might be 'default'. I prefer this to avoid dups:
+        options = list(OrderedDict.fromkeys(options))
 
 
         # Try each template option in order of priority. Return ASAP.

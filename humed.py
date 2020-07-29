@@ -323,6 +323,9 @@ class Humed():
         # choose appropriate channel by config key
         if level in ['ok', 'info']:
             chan = 'webhook_default'
+        # I worry about unknowns, nagios
+        elif level in ['warning', 'unknown']:
+            chan = 'webhook_warning'
         else:
             chan = 'webhook_{}'.format(level)
         # if the config key does not exist, fallback to default:
@@ -385,6 +388,7 @@ class Humed():
         # ----------------------------
         # ok         -> info (or default)
         # info       -> info (or default)
+        # unknown    -> warning
         # warning    -> warning
         # error      -> error
         # critical   -> critical
@@ -394,7 +398,7 @@ class Humed():
                 # https://python-logstash-async.readthedocs.io/en/stable/usage.html#
                 self.logger.info('hume({}): {}'.format(hostname, msg),
                                  extra=extra)
-            elif level == 'warning':
+            elif level == 'warning' or level == 'unknown':
                 self.logger.warning('hume({}) {}'.format(hostname, msg),
                                     extra=extra)
             elif level == 'error':
@@ -466,6 +470,7 @@ class Humed():
         # ----------------------------
         # ok         -> info
         # info       -> info
+        # unknown    -> warning
         # warn       -> warning
         # error      -> error
         # critical   -> critical
@@ -474,7 +479,7 @@ class Humed():
             if level == 'ok' or level == 'info':
                 # https://python-logstash-async.readthedocs.io/en/stable/usage.html#
                 self.logger.info('hume({}): {}'.format(hostname, msg))
-            elif level == 'warn':
+            elif level == 'warning' or level == 'unknown':
                 self.logger.warning('hume({}) {}'.format(hostname, msg))
             elif level == 'error':
                 self.logger.error('hume({}): {}'.format(hostname, msg))

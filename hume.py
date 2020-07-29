@@ -14,11 +14,12 @@ from humetools import (
 )
 
 
-__version__ = '1.2.21'
+__version__ = '1.2.22'
 
 
 class Hume():
-    LEVELS = ['info', 'ok', 'warning', 'error', 'critical', 'debug', ]
+    # 'unknown' is added for Nagios compatibility
+    LEVELS = ['info', 'ok', 'warning', 'error', 'critical', 'debug', 'unknown']
     DEFAULT_LEVEL = 'info'
     NO_TAGS = []
     NO_TASKID = ''
@@ -190,6 +191,7 @@ def run():
                         action='store_true',
                         dest='verbose')
     parser.add_argument("-L", "--level",
+                        type=str.lower,  # TODO: also check when instancing
                         choices=Hume.LEVELS,
                         default=Hume.DEFAULT_LEVEL,
                         help="Level of update to send, defaults to 'info'")

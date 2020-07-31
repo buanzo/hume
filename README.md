@@ -55,7 +55,7 @@ into your script and report directly from your code. TODO: add an example.
 
 * Query database and query tools (Codename KANT).
 
-Humed works in localhost mode only, but master/slave ideas have been
+Humed works in localhost mode only, but primary/secondary ideas have been
 considered (see below) - There is NO QUERY TOOL, but you can get data off
 the humed.sqlite3 database
 
@@ -141,6 +141,10 @@ VALUES = All of HumePkt? timestamp included.
 The MSG might not end up being graphed... :P but Grafana for instance supports
 Text panels. It might be nice to be able to design a Hume Tasks dashboard.
 
+* mailx drop-in replacement
+
+unattended-upgrades and other packages send mail notifications using mailx. Write
+a hume-mailx that can be used as alternative.
 
 # Components
 
@@ -152,11 +156,11 @@ fallback to sqlite that humed can read on startup?
 ## humed
 
 its the local publish queue.  consumes messages, applies
-filtering/preprocessing, security, etc.  Can be set to master or slave mode. 
+filtering/preprocessing, security, etc.  Can be set to primary or secondary mode. 
 This way the hume CLI tool will just push gather some info, then push zmq
-messages to localhost humed.  if localhost humed is a slave, it will have a
-thread to send pending hume messages to the master.  query tool should work
-against slave or master.
+messages to localhost humed.  if localhost humed is a secondary, it will have a
+thread to send pending hume messages to the primary.  query tool should work
+against secondary or primary.
 
 ## Transfer Methods
 

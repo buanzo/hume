@@ -233,6 +233,11 @@ Default 1000ms / 1 second. Takes precedence over HUME_RECVTIMEOUT envvar.''')
                         dest='hostname',
                         help='''[OPTIONAL] Sets hostname to use in hume
 message. Defaults to detected hostname "{}"'''.format(platform.node()))
+    parser.add_argument('-x', '--extra',
+                        action='append',
+                        dest='extra',
+                        help='''Sends an additional variable=value with the
+hume message. Can be used multiple times. Example: -x identifier='abc1' -x age=42''')
     parser.add_argument('msg',
                         help="[REQUIRED] Message to include with this update")
     args = parser.parse_args()

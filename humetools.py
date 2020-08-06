@@ -128,6 +128,8 @@ class HumeRenderer():
             raise(ValueError('render: humePkt object must be passed'))
         # Let's try to render according to availability
         # TODO: use packageloader for hume-provided templates
+        # TODO: better yet, also use ChoiceLoader
+        # https://jinja.palletsprojects.com/en/2.11.x/api/#loaders
         options = []
         options.append('{}_{}.tpl'.format(base_template, level))
         options.append('{}_default.tpl'.format(base_template))

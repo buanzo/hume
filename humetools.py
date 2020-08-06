@@ -49,7 +49,7 @@ class HumeRenderer():
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "{{hume}} *Priority Level:* {{ hume.level }}\n{{ hume.msg }}"
+        "text": "*Priority Level:* {{ hume.level }}\n{{ hume.msg }}"
       }
     },
     {

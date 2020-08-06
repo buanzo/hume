@@ -49,7 +49,7 @@ class HumeRenderer():
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "*Priority Level:* {{ hume.level }}\n{{ hume.msg }}"
+        "text": "{{hume}} *Priority Level:* {{ hume.level }}\n{{ hume.msg }}"
       }
     },
     {
@@ -158,6 +158,7 @@ class HumeRenderer():
         if r is None:  # No template worked, use internal fallback loader
             if self.debug:
                 printerr('HumeRenderer: Fallback for "{}"'.format(self.transfer_method))
+            printerr('ABOUT TO RENDER:')
             pprinterr(humePkt)
             r = self.jinja2fallback.get_template(self.transfer_method).render(humePkt)
         return(r)

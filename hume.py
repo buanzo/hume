@@ -14,7 +14,7 @@ from humetools import (
 )
 
 
-__version__ = '1.2.24'
+__version__ = '1.2.25'
 
 
 class Hume():

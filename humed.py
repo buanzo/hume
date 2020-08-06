@@ -155,16 +155,25 @@ class Humed():
         if self.prepare_db() is False:
             sys.exit('Humed: Error preparing database')
 
+    def packet_upgrade_check(self, item):
+        # We need to include hume pkt version. dammit.
+        printerr('IN CHECK')
+        pprinterr(item.hume)
+        printerr('OUT CHECK')
+        return(item)
+        
     def worker_process_transfers(self):  # TODO
         while True:
             item = self.queue.get()
             if self.debug:
                 pprinterr(item)
-            pendientes = self.list_transfers(pending=True)
+            pendientes = self.list_transfers2(pending=True)
             if self.debug:
                 printerr('Pending Items to send: {}'.format(len(pendientes)))
                 printerr('Methods: {}'.format(self.transfer_method))
-            for item in pendientes:
+            for rowid in pendientes:
+                humepkt = self.get_humepkt_from_transfers(rowid=rowid)
+                #item = packet_upgrade_check(item)
                 if self.transfer_method == 'logstash':
                     ret = self.logstash(item=item)
                 elif self.transfer_method == 'syslog':
@@ -172,9 +181,9 @@ class Humed():
                 elif self.transfer_method == 'rsyslog':
                     ret = self.syslog(item=item)  # using std SysLogHandler
                 elif self.transfer_method == 'slack':
-                    ret = self.slack(item=item)
+                    ret = self.slack(humepkt=humepkt, rowid=rowid)
                 if ret is True:
-                    self.transfer_ok(rowid=item[0])
+                    self.transfer_ok(rowid=rowid)
             self.queue.task_done()
 
     def get_sqlite_conn(self):
@@ -252,12 +261,57 @@ class Humed():
             lista.append(row)
         return(lista)
 
+    def get_humepkt_from_transfers(self, rowid=None):
+        if rowid is None:
+            return(None)
+        sql = 'SELECT * FROM transfers WHERE rowid = ?'
+        try:
+            conn = self.get_sqlite_conn()
+            cursor = conn.cursor()
+            cursor.execute(sql, (rowid,))
+            rows = cursor.fetchall()
+        except Exception as ex:
+            printerr(ex)
+        pprinterr(rows)
+        ts = rows[0][0]
+        try:
+            hume = json.loads(rows[0][2])
+        except Exception as ex:
+            if self.debug:
+                printerr("Malformed json packet ROWID#{}.".format(rowid))
+            return(False)  # FIX: malformed json at this stage? mmm
+        humepkt={}
+        humepkt['rowid'] = rowid
+        humepkt['ts'] = ts
+        humepkt['hume'] = hume
+        return(humepkt)
+        
+    def list_transfers2(self, pending=False):
+        if pending is True:
+            sql = 'SELECT rowid FROM transfers WHERE sent = 0'
+        else:
+            sql = 'SELECT rowid FROM transfers'
+        lista = []
+        rows = []
+        try:
+            conn = self.get_sqlite_conn()
+            cursor = conn.cursor()
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+        except Exception as ex:
+            printerr(ex)
+
+        for row in rows:
+            lista.append(row[0])
+        return(lista)
+
     def process_transfers(self):
-        pendientes = self.list_transfers(pending=True)
+        pendientes = self.list_transfers2(pending=True)
         if self.debug:
             printerr('Pending Items to send: {}'.format(len(pendientes)))
             printerr('Methods: {}'.format(self.transfer_method))
-        for item in pendientes:
+        for rowid in pendientes:
+            humepkt = self.get_humepkt_from_transfers(rowid=rowid)
             if self.transfer_method == 'logstash':
                 ret = self.logstash(item=item)
             elif self.transfer_method == 'syslog':
@@ -265,24 +319,18 @@ class Humed():
             elif self.transfer_method == 'rsyslog':
                 ret = self.syslog(item=item)  # using std SysLogHandler
             elif self.transfer_method == 'slack':
-                ret = self.slack(item=item)
+                ret = self.slack(humepkt=humepkt, rowid=rowid)
             if ret is True:
-                self.transfer_ok(rowid=item[0])
+                self.transfer_ok(rowid=rowid)
         return(True)
 
-    def slack(self, item=None):
-        if item is None:
+    def slack(self, humepkt=None, rowid=None):
+        if humepkt is None or rowid is None:
             return(False)  # FIX: should not happen
-        rowid = item[0]
-        ts = item[1]
-        try:
-            humepkt = json.loads(item[3])
-        except Exception as ex:
-            if self.debug:
-                printerr("Malformed json packet ROWID#{}.".format(rowid))
-            return(False)  # FIX: malformed json at this stage? mmm
-        hume = humepkt['hume']
-        sender_host = humepkt['hostname']
+        pprinterr(humepkt)
+        hume = humepkt['hume']['hume']
+        ts = humepkt['ts']
+        sender_host = humepkt['hume']['hostname']
         if self.debug:
             pprinterr(hume)
         level = hume['level']
@@ -312,7 +360,7 @@ class Humed():
             basetpl = 'default'
         slackmsg = self.renderer.render(base_template=basetpl,
                                         level=level,
-                                        humePkt=humepkt)
+                                        humePkt={'hume': hume})
         if slackmsg is None:
             # Fallback to text, no template worked
             if self.debug:

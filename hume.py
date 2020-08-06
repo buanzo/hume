@@ -14,7 +14,7 @@ from humetools import (
 )
 
 
-__version__ = '1.2.22'
+__version__ = '1.2.23'
 
 
 class Hume():
@@ -236,6 +236,7 @@ message. Defaults to detected hostname "{}"'''.format(platform.node()))
     parser.add_argument('-x', '--extra',
                         action='append',
                         dest='extra',
+                        metavar='VAR=VALUE or VAR:VALUE',
                         help='''Sends an additional variable=value with the
 hume message. Can be used multiple times. Example: -x identifier='abc1' -x age=42''')
     parser.add_argument('msg',

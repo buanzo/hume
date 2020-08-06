@@ -280,6 +280,12 @@ class Humed():
             if self.debug:
                 printerr("Malformed json packet ROWID#{}.".format(rowid))
             return(False)  # FIX: malformed json at this stage? mmm
+        if 'extra' not in hume['hume'].keys():
+            hume['hume']['extra'] = {}
+        else:
+            # might be there but be invalid
+            if hume['hume']['extra'] is None:
+                hume['hume']['extra'] = {}
         humepkt={}
         humepkt['rowid'] = rowid
         humepkt['ts'] = ts

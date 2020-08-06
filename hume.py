@@ -14,7 +14,7 @@ from humetools import (
 )
 
 
-__version__ = '1.2.23'
+__version__ = '1.2.24'
 
 
 class Hume():
@@ -30,8 +30,17 @@ class Hume():
 
         # args
         self.args = args
-        
-        self.verbose = valueOrDefault(args,'verbose',False)
+
+        # extra
+        if hasattr(args, 'extra'):
+            if args.extra is None:
+                self.extra = {}
+            else:
+                self.extra = self.dictify_extra_vars(args.extra)
+        else:
+            self.extra = {}
+
+        self.verbose = valueOrDefault(args, 'verbose', False)
 
         # Prepare object to send
         # Might end up moving some of this stuff around
@@ -63,9 +72,7 @@ class Hume():
 
         # The extra field in hume is used to store additional
         # information, and is not subject to hume design parameters.
-        self.reqObj['hume']['extra'] = valueOrDefault(args,
-                                                      'extra',
-                                                      {})
+        self.reqObj['hume']['extra'] = self.extra
         # Very optional ones:
         try:
             if self.args.append_pstree or 'append_pstree' in self.args.keys():
@@ -85,6 +92,18 @@ class Hume():
             if not self.test_unix_socket(config['url']):
                 print('socket not writable or other error')
                 sys.exit(1)
+
+    def dictify_extra_vars(self, extra_vars):
+        if extra_vars is None:
+            return({})
+        d = {}
+        for item in extra_vars:
+            for c in [':', '=']:  # Yeah, I know...
+                if item.count(c) == 1:
+                    splitChar = c
+            (var, val) = item.split(splitChar)
+            d[var] = val
+        return(d)
 
     def test_unix_socket(self, url):
         path = url.replace('ipc://', '')
@@ -116,7 +135,7 @@ class Hume():
         sock = zmq.Context().socket(zmq.REQ)
         sock.setsockopt(zmq.LINGER, 0)
         if self.verbose:
-            printerr('Hume: attempting connection to {}'.format(self.config['url']))
+            printerr('Hume: connecting to {}'.format(self.config['url']))
         try:
             sock.connect(self.config['url'])
         except zmq.ZMQError as exc:
@@ -238,11 +257,12 @@ message. Defaults to detected hostname "{}"'''.format(platform.node()))
                         dest='extra',
                         metavar='VAR=VALUE or VAR:VALUE',
                         help='''Sends an additional variable=value with the
-hume message. Can be used multiple times. Example: -x identifier='abc1' -x age=42''')
+hume message. Can be used multiple times.
+Example: -x identifier=abc1 -x age=42''')
     parser.add_argument('msg',
                         help="[REQUIRED] Message to include with this update")
     args = parser.parse_args()
-    
+
     if not is_valid_hostname(args.hostname):
         printerr('Hostname is not valid. Ignoring hume.')
         sys.exit(1)

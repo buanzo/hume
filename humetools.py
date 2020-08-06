@@ -158,6 +158,7 @@ class HumeRenderer():
         if r is None:  # No template worked, use internal fallback loader
             if self.debug:
                 printerr('HumeRenderer: Fallback for "{}"'.format(self.transfer_method))
+            pprinterr(humePkt)
             r = self.jinja2fallback.get_template(self.transfer_method).render(humePkt)
         return(r)
 

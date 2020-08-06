@@ -295,12 +295,13 @@ class Humed():
             tagstr = ','.join(tags)
         # Make sure to read:
         # https://api.slack.com/reference/surfaces/formatting
-        m = "{} [{ts}] - {level} {task}: '{msg}' {tagstr}".format(sender_host,
-                                                                  level=level,
-                                                                  msg=msg,
-                                                                  task=task,
-                                                                  ts=ts,
-                                                                  tagstr=tagstr)
+        m = "{} [{ts}] - {level} {task}: '{msg}' {tagstr}"
+        m = m.format(sender_host,
+                     level=level,
+                     msg=msg,
+                     task=task,
+                     ts=ts,
+                     tagstr=tagstr)
         # https://api.slack.com/reference/surfaces/formatting#escaping
         m = m.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
         # Remember, text becomes a fallback if 'blocks' are in use:
@@ -316,10 +317,10 @@ class Humed():
             # Fallback to text, no template worked
             if self.debug:
                 printerr('Humed: no templates were available, fallbacking...')
-            slackmsg = {'text', m,} # TODO: move construction of m here
-            data=json.dumps(slackmsg)
+            slackmsg = {'text', m, }  # TODO: move construction of m here
+            data = json.dumps(slackmsg)
         else:
-            data=slackmsg
+            data = slackmsg
         # choose appropriate channel by config key
         if level in ['ok', 'info']:
             chan = 'webhook_default'
@@ -492,7 +493,7 @@ class Humed():
         else:
             return(True)
 
-    def is_valid_hume(self,hume):
+    def is_valid_hume(self, hume):
         # This function checks incoming hume structure
         # and values.
         # Returns: True or False
@@ -539,6 +540,7 @@ class Humed():
                 # NOT affect be a deal breaker
                 sock.send_string('OK')
                 if self.is_valid_hume(hume):
+                    pprinterr(hume)
                     rowid = self.add_transfer(hume)  # TODO: verify ret
                     if self.debug:
                         printerr(rowid)

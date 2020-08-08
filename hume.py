@@ -48,16 +48,18 @@ class Hume():
         # in such a way that the code can grow organically
         # and be coder-assistive
         self.reqObj = {}
-        # Stores hostname
-        self.reqObj['hostname'] = valueOrDefault(args,
-                                                 'hostname',
-                                                 platform.node())
         # To store information related to how hume was executed
         self.reqObj['process'] = {}
         # Hume-specific information
         self.reqObj['hume'] = {}
         # Mandatory
         self.reqObj['hume']['timestamp'] = self.get_timestamp()
+        # Stores hume-client hostname. Should not be confused with the
+        # humePkt-level hostname that humed stores. In some weird
+        # instances hume and humed might be running in different machines.
+        self.reqObj['hume']['hostname'] = valueOrDefault(args,
+                                                 'hostname',
+                                                 platform.node())
         # Make sure to set a default value
         self.reqObj['hume']['level'] = valueOrDefault(args,
                                                       'level',

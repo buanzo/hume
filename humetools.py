@@ -57,7 +57,7 @@ class HumeRenderer():
       "fields": [
         {
           "type": "mrkdwn",
-          "text": "*Hostname:*\n{{ hostname }}"
+          "text": "*Sender:*\n{{ hume.hostname }} via {{ humed.hostname }}"
         },
         {
           "type": "mrkdwn",
@@ -109,7 +109,7 @@ class HumeRenderer():
             ret.append(os.path.basename(item).split('_default.tpl')[0])
         return(ret)
 
-    def render(self,base_template=None, level='info', humePkt=None):
+    def render(self,base_template=None, level='info', humed_hostname=None, humePkt=None):
         # This function gets the template file for the base, according
         # to selection process:
         # priority -> default -> method default -> ERROR
@@ -126,6 +126,8 @@ class HumeRenderer():
             raise(ValueError('render: base_template needs to be specified'))
         if humePkt is None:
             raise(ValueError('render: humePkt object must be passed'))
+        if humed_hostname is None:
+            raose(ValueError('render: humed_hostname is missing'))
         # Let's try to render according to availability
         # TODO: use packageloader for hume-provided templates
         # TODO: better yet, also use ChoiceLoader
@@ -140,6 +142,11 @@ class HumeRenderer():
         options = list(OrderedDict.fromkeys(options))
 
 
+        # Build renderContext
+        renderContext = {'hume': {}, 'humed': {}}
+        for key, val in humePkt['hume'].items():
+            renderContext['hume'][key] = val
+        renderContext['humed']['hostname'] = humed_hostname
         # Try each template option in order of priority. Return ASAP.
         # If no template option exists, use another loader
         for option in options:
@@ -147,7 +154,7 @@ class HumeRenderer():
             if self.debug:
                 printerr('HumeRenderer: Trying option = "{}"'.format(option))
             try:
-                r = self.jinja2.get_template(option).render(humePkt)
+                r = self.jinja2.get_template(option).render(renderContext)
             except TemplateNotFound:
                 continue
             except Exception as exc:
@@ -158,9 +165,7 @@ class HumeRenderer():
         if r is None:  # No template worked, use internal fallback loader
             if self.debug:
                 printerr('HumeRenderer: Fallback for "{}"'.format(self.transfer_method))
-            printerr('ABOUT TO RENDER:')
-            pprinterr(humePkt)
-            r = self.jinja2fallback.get_template(self.transfer_method).render(humePkt)
+            r = self.jinja2fallback.get_template(self.transfer_method).render(renderContext)
         return(r)
 
 class NotImplementedAction(argparse.Action):

@@ -107,6 +107,10 @@ class Humed():
             self.dbpath = './humed.sqlite3'
         self.endpoint = config['endpoint'].get()
         self.transfer_method = config['transfer_method'].get()
+        try:
+            self.humed_hostname = config['hostname'].get()
+        except Exception:
+            self.humed_hostname = platform.node()
         self.transfer_method_args = config[self.transfer_method].get()
         # Queue and Worker
         self.queue = Queue()
@@ -156,10 +160,8 @@ class Humed():
             sys.exit('Humed: Error preparing database')
 
     def packet_upgrade_check(self, item):
-        # We need to include hume pkt version. dammit.
-        printerr('IN CHECK')
-        pprinterr(item.hume)
-        printerr('OUT CHECK')
+        # TODO: We need to include hume pkt version. dammit.
+        # I am SOOOOOOOOOOO rewriting hume..
         return(item)
         
     def worker_process_transfers(self):  # TODO
@@ -272,7 +274,6 @@ class Humed():
             rows = cursor.fetchall()
         except Exception as ex:
             printerr(ex)
-        pprinterr(rows)
         ts = rows[0][0]
         try:
             hume = json.loads(rows[0][2])
@@ -333,10 +334,10 @@ class Humed():
     def slack(self, humepkt=None, rowid=None):
         if humepkt is None or rowid is None:
             return(False)  # FIX: should not happen
-        pprinterr(humepkt)
         hume = humepkt['hume']['hume']
         ts = humepkt['ts']
-        sender_host = humepkt['hume']['hostname']
+        hume_hostname = hume['hostname']
+        humed_hostname = self.humed_hostname
         if self.debug:
             pprinterr(hume)
         level = hume['level']
@@ -349,12 +350,13 @@ class Humed():
             tagstr = ','.join(tags)
         # Make sure to read:
         # https://api.slack.com/reference/surfaces/formatting
-        m = "{} [{ts}] - {level} {task}: '{msg}' {tagstr}"
-        m = m.format(sender_host,
-                     level=level,
-                     msg=msg,
-                     task=task,
+        m = "{hh} [{ts}] - {level} {host}:{task}: '{msg}' {tagstr}"
+        m = m.format(hh=humed_hostname,
                      ts=ts,
+                     level=level,
+                     task=task,
+                     host=hume_hostname,
+                     msg=msg,
                      tagstr=tagstr)
         # https://api.slack.com/reference/surfaces/formatting#escaping
         m = m.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
@@ -366,6 +368,7 @@ class Humed():
             basetpl = 'default'
         slackmsg = self.renderer.render(base_template=basetpl,
                                         level=level,
+                                        humed_hostname=self.humed_hostname, # TODO: fix hostname thingy
                                         humePkt={'hume': hume})
         if slackmsg is None:
             # Fallback to text, no template worked
@@ -410,7 +413,7 @@ class Humed():
         except Exception as ex:
             return(False)  # FIX: malformed json at this stage? mmm
         hume = humepkt['hume']
-        sender_host = humepkt['hostname']
+        sender_host = humepkt['hume']['hostname']
         if 'process' in humepkt.keys():  # This data is optional in hume (-a)
             process = humepkt['process']
         else:
@@ -423,12 +426,12 @@ class Humed():
         tags = hume['tags']
         humecmd = hume['humecmd']
         timestamp = hume['timestamp']
-        # hostname
-        # FIX: add a hostname configuration keyword
-        hostname = socket.getfqdn()
+        # hume hostname
+        hostname = hume['hostname']
         # extra field for logstash message
         extra = {
-            'hostname': sender_host,
+            'humed_hostname': sender_host,
+            'hume_hostname': hume['hostname'],
             'tags': tags,
             'task': task,
             'humelevel': level,
@@ -484,7 +487,7 @@ class Humed():
         except Exception as ex:
             return(False)  # FIX: malformed json at this stage? mmm
         hume = humepkt['hume']
-        sender_host = humepkt['hostname']
+        sender_host = humepkt['hume']['hostname']
 
         # Optional data
         if 'process' in humepkt.keys():  # This data is optional in hume (-a)
@@ -551,8 +554,8 @@ class Humed():
         # This function checks incoming hume structure
         # and values.
         # Returns: True or False
-        if 'hostname' in hume.keys():
-            if not is_valid_hostname(hume['hostname']):
+        if 'hostname' in hume['hume'].keys():
+            if not is_valid_hostname(hume['hume']['hostname']):
                 return(False)
         else:  # hostname MUST exist and be valid
             return(False)
@@ -594,7 +597,6 @@ class Humed():
                 # NOT affect be a deal breaker
                 sock.send_string('OK')
                 if self.is_valid_hume(hume):
-                    pprinterr(hume)
                     rowid = self.add_transfer(hume)  # TODO: verify ret
                     if self.debug:
                         printerr(rowid)

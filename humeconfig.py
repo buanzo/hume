@@ -2,10 +2,10 @@
 import os
 import sys
 import glob
-import json
 import argparse
+import platform
 import requests
-from humetools import printerr, pprinterr
+from humetools import printerr
 from shutil import which
 from pathlib import Path
 
@@ -16,20 +16,35 @@ class HumeConfig():
         self.DOJSONMETAURL = 'http://169.254.169.254/metadata/v1.json'
 
     def from_url(self, url, digitalocean=False):
-        if digitalocean is True:  # lets get some metadata
-            pass  # TODO
+        """Obtain configuration from a remote HTTP service."""
+        if isinstance(url, list):
+            url = url[0]
+
+        payload = {
+            'hostname': platform.node(),
+        }
+
+        if digitalocean:
+            try:
+                payload['digitalocean'] = requests.get(self.DOJSONMETAURL,
+                                                       timeout=5).json()
+            except Exception as exc:
+                printerr('humeconfig error:')
+                printerr('http.get({})'.format(self.DOJSONMETAURL))
+                printerr('{}'.format(exc))
+                sys.exit(1)
+
         try:
-            do_meta = requests.get(self.DOJSONMETAURL).json()
+            resp = requests.post(url, json=payload, timeout=10)
+            resp.raise_for_status()
         except Exception as exc:
             printerr('humeconfig error:')
-            printerr('http.get({})'.format(self.DOJSONMETAURL))
+            printerr('http.post({})'.format(url))
             printerr('{}'.format(exc))
             sys.exit(1)
-        finally:
-            pprint(do_meta)
-        printerr('FROM_URL = {}'.format(url))
-        printerr('DIGITALOCEAN = {}'.format(digitalocean))
-        return(False)
+
+        self.config = resp.text.strip().splitlines()
+        return True
 
     def from_args(self, args):
         args = vars(args)

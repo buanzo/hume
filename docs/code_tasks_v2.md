@@ -17,7 +17,8 @@ This document outlines the main coding tasks required to implement the SaaS orie
 - [ ] Provide optional encryption and authentication for all connections.
 
 ## 3. Enhanced Configuration
-- [ ] Finish `humeconfig --from-url` so configuration can be bootstrapped from an HTTP endpoint.
+
+- [x] Finish `humeconfig --from-url` so configuration can be bootstrapped from an HTTP endpoint.
 - [ ] Allow per-task Slack channel mapping and support multiple simultaneous transfer methods via the plugin system.
 
 ## 4. SaaS Service

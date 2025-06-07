@@ -15,6 +15,8 @@ from humetools import (
 
 
 __version__ = '1.2.28'
+# Version of the hume message format
+MESSAGE_VERSION = 1
 
 
 class Hume():
@@ -54,6 +56,7 @@ class Hume():
         self.reqObj['hume'] = {}
         # Mandatory
         self.reqObj['hume']['timestamp'] = self.get_timestamp()
+        self.reqObj['hume']['version'] = MESSAGE_VERSION
         # Stores hume-client hostname. Should not be confused with the
         # humePkt-level hostname that humed stores. In some weird
         # instances hume and humed might be running in different machines.

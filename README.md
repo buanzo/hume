@@ -87,6 +87,13 @@ In the immediate future I will add support for task-specific channels (hume
 indicate which webhook to use for a specific task, plus a fallback/general
 webhook url for unmatched tasks or messages with no task identification.
 
+# Message format and validation
+
+Each hume message includes a `version` field that indicates the payload
+format. The daemon validates every incoming packet, checking the version
+and required fields before accepting it. Messages that fail validation are
+ignored to prevent malformed data from being stored.
+
 # Implementation, concepts, ideas
 
 ## Ideas for implementation

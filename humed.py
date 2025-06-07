@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import logging
 from logging import getLogger
-from hume import __version__
+from hume import __version__, MESSAGE_VERSION, Hume
 import sys
 import zmq
 import json
@@ -14,7 +14,6 @@ import requests
 import platform
 from logging.handlers import SysLogHandler
 from pid.decorator import pidfile
-from hume import Hume
 from queue import Queue
 from threading import Thread
 from humetools import printerr, pprinterr, is_valid_hostname, HumeRenderer
@@ -22,6 +21,9 @@ from humetools import printerr, pprinterr, is_valid_hostname, HumeRenderer
 import confuse
 
 DEVMODE = False
+
+# Supported message format versions
+SUPPORTED_MSG_VERSIONS = [MESSAGE_VERSION]
 
 # Basic list of TRANSFER_METHODS
 # We extend TRANSFER_METHODS by testing for optional modules
@@ -551,15 +553,25 @@ class Humed():
             return(True)
 
     def is_valid_hume(self, hume):
-        # This function checks incoming hume structure
-        # and values.
-        # Returns: True or False
-        if 'hostname' in hume['hume'].keys():
-            if not is_valid_hostname(hume['hume']['hostname']):
-                return(False)
-        else:  # hostname MUST exist and be valid
-            return(False)
-        return(True)  # FIX: Change to False once all cases are considered
+        """Validate incoming hume packet structure and contents."""
+        if 'hume' not in hume:
+            return False
+        pkt = hume['hume']
+        # version must exist and be supported
+        if 'version' not in pkt:
+            return False
+        if pkt['version'] not in SUPPORTED_MSG_VERSIONS:
+            return False
+        # hostname must exist and be valid
+        if 'hostname' not in pkt or not is_valid_hostname(pkt['hostname']):
+            return False
+        # level must be valid
+        if 'level' not in pkt or pkt['level'] not in Hume.LEVELS:
+            return False
+        # message field must exist
+        if 'msg' not in pkt:
+            return False
+        return True
 
     def run(self):
         # Humed main loop

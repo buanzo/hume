@@ -554,23 +554,42 @@ class Humed():
 
     def is_valid_hume(self, hume):
         """Validate incoming hume packet structure and contents."""
-        if 'hume' not in hume:
+        if not isinstance(hume, dict):
+            return False
+        if 'hume' not in hume or not isinstance(hume['hume'], dict):
             return False
         pkt = hume['hume']
+
         # version must exist and be supported
-        if 'version' not in pkt:
+        if 'version' not in pkt or not isinstance(pkt['version'], int):
             return False
         if pkt['version'] not in SUPPORTED_MSG_VERSIONS:
             return False
-        # hostname must exist and be valid
-        if 'hostname' not in pkt or not is_valid_hostname(pkt['hostname']):
+
+        # timestamp must exist
+        if 'timestamp' not in pkt or not isinstance(pkt['timestamp'], str):
             return False
+
+        # hostname must exist and be valid
+        if 'hostname' not in pkt or not is_valid_hostname(str(pkt['hostname'])):
+            return False
+
         # level must be valid
         if 'level' not in pkt or pkt['level'] not in Hume.LEVELS:
             return False
-        # message field must exist
-        if 'msg' not in pkt:
+
+        # message field must exist and be string
+        if 'msg' not in pkt or not isinstance(pkt['msg'], str):
             return False
+
+        # optional fields
+        if 'tags' in pkt and not isinstance(pkt['tags'], list):
+            return False
+        if 'task' in pkt and not isinstance(pkt['task'], str):
+            return False
+        if 'extra' in pkt and not isinstance(pkt['extra'], dict):
+            return False
+
         return True
 
     def run(self):

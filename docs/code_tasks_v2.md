@@ -7,17 +7,17 @@ This document outlines the main coding tasks required to implement the SaaS orie
   - `hume` – CLI and client utilities.
   - `humed` – daemon and local transports.
   - `humesaas` – new SaaS service components.
-- [ ] Implement plugin loading for transfer methods so new transports can be added without touching the core code.
+- [x] Implement plugin loading for transfer methods so new transports can be added without touching the core code.
 - [ ] Replace the current SQLite queue with an asynchronous job queue (e.g. using `asyncio` or a broker such as Redis/RabbitMQ) to support multiple transports and higher throughput.
 - [ ] Add master/secondary mode for `humed`, allowing secondary instances to forward queued messages to a primary server.
 - [ ] Implement a watchdog that periodically checks `humed` is alive and send alerts when it is not.
 
 ## 2. Security Improvements
-- [ ] Introduce message format versioning and rigorous validation of incoming data.
+- [x] Introduce message format versioning and rigorous validation of incoming data.
 - [ ] Provide optional encryption and authentication for all connections.
 
 ## 3. Enhanced Configuration
-- [ ] Finish `humeconfig --from-url` so configuration can be bootstrapped from an HTTP endpoint.
+- [x] Finish `humeconfig --from-url` so configuration can be bootstrapped from an HTTP endpoint.
 - [ ] Allow per-task Slack channel mapping and support multiple simultaneous transfer methods via the plugin system.
 
 ## 4. SaaS Service

@@ -17,6 +17,7 @@ from pid.decorator import pidfile
 from queue import Queue
 from threading import Thread
 from humetools import printerr, pprinterr, is_valid_hostname, HumeRenderer
+from humed_plugins import load_plugins, get_plugin, plugin_config_templates
 # The Confuse library is awesome.
 import confuse
 
@@ -39,6 +40,12 @@ except ImportError:
 else:
     # You gotta love try/except/else/finally
     TRANSFER_METHODS.append('logstash')
+
+# Load external plugins and extend list of transfer methods
+PLUGINS = load_plugins()
+for name in PLUGINS.keys():
+    if name not in TRANSFER_METHODS:
+        TRANSFER_METHODS.append(name)
 
 # On Humed() __init__, we scan the templates dir and get
 # base template names for each transfer_method.
@@ -97,6 +104,10 @@ config_template = {  # TODO: add debug. check confuse.Bool()
     },
 }
 
+# Merge plugin-provided configuration templates
+for _name, _tpl in plugin_config_templates.items():
+    config_template[_name] = _tpl
+
 
 class Humed():
     def __init__(self, config):
@@ -113,7 +124,14 @@ class Humed():
             self.humed_hostname = config['hostname'].get()
         except Exception:
             self.humed_hostname = platform.node()
-        self.transfer_method_args = config[self.transfer_method].get()
+        self.plugin = get_plugin(self.transfer_method)
+        if self.plugin:
+            try:
+                self.transfer_method_args = config[self.transfer_method].get()
+            except Exception:
+                self.transfer_method_args = {}
+        else:
+            self.transfer_method_args = config[self.transfer_method].get()
         # Queue and Worker
         self.queue = Queue()
         worker = Thread(target=self.worker_process_transfers)
@@ -121,8 +139,8 @@ class Humed():
         worker.start()
 
         # HumeRenderer
-        templates_dir = '{}/templates'.format(config.config_dir(),
-                                              self.transfer_method)
+        templates_dir = '{}/templates/{}'.format(config.config_dir(),
+                                                self.transfer_method)
         if self.debug:
             printerr('Templates_dir = {}'.format(templates_dir))
         self.renderer = HumeRenderer(templates_dir=templates_dir,
@@ -186,6 +204,13 @@ class Humed():
                     ret = self.syslog(item=item)  # using std SysLogHandler
                 elif self.transfer_method == 'slack':
                     ret = self.slack(humepkt=humepkt, rowid=rowid)
+                elif self.plugin:
+                    try:
+                        ret = self.plugin.send(humepkt=humepkt, config=self.transfer_method_args)
+                    except Exception as exc:
+                        if self.debug:
+                            printerr(f'Plugin {self.transfer_method} failed: {exc}')
+                        ret = False
                 if ret is True:
                     self.transfer_ok(rowid=rowid)
             self.queue.task_done()

@@ -16,6 +16,9 @@ from logging.handlers import SysLogHandler
 from pid.decorator import pidfile
 from queue import Queue
 from threading import Thread
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from functools import partial
+import time
 from humetools import printerr, pprinterr, is_valid_hostname, HumeRenderer
 from humed_plugins import load_plugins, get_plugin, plugin_config_templates
 # The Confuse library is awesome.
@@ -102,6 +105,9 @@ config_template = {  # TODO: add debug. check confuse.Bool()
         'webhook_debug': confuse.String(),
         'template_base': confuse.OneOf(BASE_TEMPLATES['slack']),
     },
+    'metrics': {
+        'port': confuse.Integer(),
+    },
 }
 
 # Merge plugin-provided configuration templates
@@ -132,11 +138,18 @@ class Humed():
                 self.transfer_method_args = {}
         else:
             self.transfer_method_args = config[self.transfer_method].get()
+        try:
+            self.metrics_port = config['metrics']['port'].get()
+        except Exception:
+            self.metrics_port = None
+        self.status = {}
+        self.metrics_server = None
         # Queue and Worker
         self.queue = Queue()
         worker = Thread(target=self.worker_process_transfers)
         worker.daemon = True
         worker.start()
+        self.start_metrics_server()
 
         # HumeRenderer
         templates_dir = '{}/templates/{}'.format(config.config_dir(),
@@ -617,6 +630,66 @@ class Humed():
 
         return True
 
+    def update_status(self, hume):
+        """Store last known status per host/task"""
+        try:
+            pkt = hume['hume']
+            host = str(pkt.get('hostname', ''))
+            task = str(pkt.get('task', ''))
+            level = str(pkt.get('level', ''))
+            ts = pkt.get('timestamp')
+            try:
+                ts = datetime.datetime.fromisoformat(ts).timestamp()
+            except Exception:
+                ts = time.time()
+            self.status[(host, task)] = (level, ts)
+        except Exception:
+            pass
+
+    def render_metrics(self):
+        lines = ['# TYPE hume_task_last_ts_seconds gauge']
+        for (host, task), (level, ts) in self.status.items():
+            h = host.replace('"', '\\"')
+            t = task.replace('"', '\\"')
+            l = level.replace('"', '\\"')
+            lines.append(
+                f'hume_task_last_ts_seconds{{hostname="{h}",task="{t}",level="{l}"}} {int(ts)}'
+            )
+        return '\n'.join(lines) + '\n'
+
+    class _MetricsHandler(BaseHTTPRequestHandler):
+        def __init__(self, humed, *args, **kwargs):
+            self.humed = humed
+            super().__init__(*args, **kwargs)
+
+        def do_GET(self):
+            if self.path == '/metrics':
+                data = self.humed.render_metrics().encode()
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/plain; version=0.0.4')
+                self.end_headers()
+                self.wfile.write(data)
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def log_message(self, *a, **kw):
+            pass
+
+    def start_metrics_server(self):
+        if self.metrics_port is None:
+            return
+        handler = partial(self._MetricsHandler, self)
+        self.metrics_server = HTTPServer(('0.0.0.0', self.metrics_port), handler)
+        t = Thread(target=self.metrics_server.serve_forever)
+        t.daemon = True
+        t.start()
+
+    def stop_metrics_server(self):
+        if self.metrics_server:
+            self.metrics_server.shutdown()
+            self.metrics_server.server_close()
+
     def run(self):
         # Humed main loop
         sock = zmq.Context().socket(zmq.REP)
@@ -656,6 +729,7 @@ class Humed():
                     rowid = self.add_transfer(hume)  # TODO: verify ret
                     if self.debug:
                         printerr(rowid)
+                    self.update_status(hume)
                     self.queue.put(('work'))
                 else:
                     if self.debug:

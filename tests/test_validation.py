@@ -1,6 +1,11 @@
 import sys
+import os
 import types
 import unittest
+
+# Ensure repository root is on sys.path so local modules can be imported when
+# tests are executed directly
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Provide a dummy zmq module so humed can be imported without optional deps
 dummy = types.ModuleType('dummy')

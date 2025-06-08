@@ -418,18 +418,22 @@ class Humed():
             data = json.dumps(slackmsg)
         else:
             data = slackmsg
-        # choose appropriate channel by config key
-        if level in ['ok', 'info']:
-            chan = 'webhook_default'
-        # I worry about unknowns, nagios
-        elif level in ['warning', 'unknown']:
-            chan = 'webhook_warning'
+        # choose appropriate channel by config key or task mapping
+        task_channels = self.transfer_method_args.get('task_channels', {})
+        webhook = None
+        if isinstance(task_channels, dict) and task in task_channels:
+            webhook = task_channels[task]
+            chan = f'task_channels[{task}]'
         else:
-            chan = 'webhook_{}'.format(level)
-        # if the config key does not exist, fallback to default:
-        if chan not in self.transfer_method_args.keys():
-            chan = 'webhook_default'
-        webhook = self.transfer_method_args[chan]
+            if level in ['ok', 'info']:
+                chan = 'webhook_default'
+            elif level in ['warning', 'unknown']:
+                chan = 'webhook_warning'
+            else:
+                chan = 'webhook_{}'.format(level)
+            if chan not in self.transfer_method_args.keys():
+                chan = 'webhook_default'
+            webhook = self.transfer_method_args[chan]
         if self.debug:
             printerr('Using {}="{}" for level "{}"'.format(chan,
                                                            webhook,

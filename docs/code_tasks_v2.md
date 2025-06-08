@@ -18,7 +18,7 @@ This document outlines the main coding tasks required to implement the SaaS orie
 
 ## 3. Enhanced Configuration
 - [x] Finish `humeconfig --from-url` so configuration can be bootstrapped from an HTTP endpoint.
-- [ ] Allow per-task Slack channel mapping and support multiple simultaneous transfer methods via the plugin system.
+- [x] Allow per-task Slack channel mapping and support multiple simultaneous transfer methods via the plugin system.
 
 ## 4. SaaS Service
 - [ ] Build a server component exposing a REST API to collect events from `humed` instances.

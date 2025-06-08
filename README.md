@@ -74,18 +74,26 @@ And you would get the list of every hume event, plus a summary, including
 
 # Slack support
 
-Hume currently allows you to send messages to a Slack channel using the
-Incoming Webhooks method. You need to create a channel for hume messages,
-then a Slack App, finally create an incoming webhook for that channel and
-paste the webhook url into the humed configuration file.
+Hume can send messages to Slack using the Incoming Webhooks method. Create
+a channel for hume messages, then a Slack App, finally create an incoming
+webhook for that channel and paste the webhook url into the humed
+configuration file.
 
-Today, hume messages may be routed to different slack channels by error
-level. slack:webhook_default will be used as fallback.
+Messages may be routed to different Slack channels by error level. The
+`webhook_default` setting is used as fallback.  You can also map specific
+tasks to dedicated channels using the `task_channels` dictionary in the
+`slack` section.  Unmatched tasks fall back to the level-based routing or
+`webhook_default`.
 
-In the immediate future I will add support for task-specific channels (hume
--t switch specifies taskname).  The humed configuration will allow you to
-indicate which webhook to use for a specific task, plus a fallback/general
-webhook url for unmatched tasks or messages with no task identification.
+Example:
+
+```yaml
+slack:
+    webhook_default: https://hooks.slack.com/services/XXX/YYY/ZZZ
+    task_channels:
+        backup: https://hooks.slack.com/services/AAA/BBB/CCC
+        deploy: https://hooks.slack.com/services/DDD/EEE/FFF
+```
 
 # Message format and validation
 

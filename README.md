@@ -205,6 +205,20 @@ The logstash support uses python-logstash-async.
 ## Miscelaneous
 * mention export LINENO before calling hume
 
+## Watchdog
+
+`humewatchdog.py` can be used to monitor that the `humed` daemon is alive.
+It checks the daemon's pidfile and optionally executes a command when the
+process disappears.  The script may run once or periodically using the
+``--interval`` option:
+
+```
+$ python3 humewatchdog.py --interval 60 --alert-cmd 'systemctl restart humed'
+```
+
+When ``--interval`` is provided the watchdog will continue checking every
+specified number of seconds.
+
 ## TODO
 * Make humeconfig's --from-url work
 * add support to managing issues from within hume, example:

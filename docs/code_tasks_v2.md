@@ -10,7 +10,7 @@ This document outlines the main coding tasks required to implement the SaaS orie
 - [x] Implement plugin loading for transfer methods so new transports can be added without touching the core code.
 - [ ] Replace the current SQLite queue with an asynchronous job queue (e.g. using `asyncio` or a broker such as Redis/RabbitMQ) to support multiple transports and higher throughput.
 - [ ] Add master/secondary mode for `humed`, allowing secondary instances to forward queued messages to a primary server.
-- [ ] Implement a watchdog that periodically checks `humed` is alive and send alerts when it is not.
+- [x] Implement a watchdog that periodically checks `humed` is alive and send alerts when it is not.
 
 ## 2. Security Improvements
 - [x] Introduce message format versioning and rigorous validation of incoming data.

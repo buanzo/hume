@@ -107,6 +107,7 @@ config_template = {  # TODO: add debug. check confuse.Bool()
     },
     'metrics': {
         'port': confuse.Integer(),
+        'token': confuse.Optional(confuse.String()),
     },
 }
 
@@ -142,6 +143,10 @@ class Humed():
             self.metrics_port = config['metrics']['port'].get()
         except Exception:
             self.metrics_port = None
+        try:
+            self.metrics_token = config['metrics']['token'].get()
+        except Exception:
+            self.metrics_token = None
         self.status = {}
         self.metrics_server = None
         # Queue and Worker
@@ -668,6 +673,12 @@ class Humed():
 
         def do_GET(self):
             if self.path == '/metrics':
+                if self.humed.metrics_token:
+                    auth = self.headers.get('Authorization', '')
+                    if auth != f'Bearer {self.humed.metrics_token}':
+                        self.send_response(403)
+                        self.end_headers()
+                        return
                 data = self.humed.render_metrics().encode()
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/plain; version=0.0.4')

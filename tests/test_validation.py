@@ -32,7 +32,7 @@ class _C:
         pass
 def _factory(*a, **kw):
     return _C()
-for attr in ['String', 'OneOf', 'Integer', 'Choice']:
+for attr in ['String', 'OneOf', 'Integer', 'Choice', 'Optional']:
     setattr(confuse_mod, attr, _factory)
 confuse_mod.Configuration = _C
 sys.modules['confuse'] = confuse_mod

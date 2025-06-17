@@ -23,7 +23,7 @@ class _C:
 
 def _factory(*a, **kw):
     return _C()
-for attr in ['String', 'OneOf', 'Integer', 'Choice']:
+for attr in ['String', 'OneOf', 'Integer', 'Choice', 'Optional']:
     setattr(confuse_mod, attr, _factory)
 confuse_mod.Configuration = _C
 sys.modules['confuse'] = confuse_mod
@@ -59,6 +59,7 @@ class TestMetrics(unittest.TestCase):
         self.humed = Humed.__new__(Humed)
         self.humed.status = {}
         self.humed.metrics_port = None
+        self.humed.metrics_token = None
 
     def sample_msg(self):
         return {
@@ -87,6 +88,22 @@ class TestMetrics(unittest.TestCase):
         port = self.humed.metrics_server.server_address[1]
         self.humed.update_status(self.sample_msg())
         data = urllib.request.urlopen(f'http://127.0.0.1:{port}/metrics').read().decode()
+        self.assertIn('hume_task_last_ts_seconds', data)
+        self.humed.stop_metrics_server()
+
+    def test_metrics_auth(self):
+        self.humed.metrics_port = 0
+        self.humed.metrics_token = 'secret'
+        self.humed.start_metrics_server()
+        port = self.humed.metrics_server.server_address[1]
+        self.humed.update_status(self.sample_msg())
+        # request without token should fail
+        req = urllib.request.Request(f'http://127.0.0.1:{port}/metrics')
+        with self.assertRaises(urllib.error.HTTPError):
+            urllib.request.urlopen(req).read()
+        # with token should succeed
+        req = urllib.request.Request(f'http://127.0.0.1:{port}/metrics', headers={'Authorization': 'Bearer secret'})
+        data = urllib.request.urlopen(req).read().decode()
         self.assertIn('hume_task_last_ts_seconds', data)
         self.humed.stop_metrics_server()
 

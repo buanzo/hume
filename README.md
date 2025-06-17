@@ -156,6 +156,12 @@ VALUES = All of HumePkt? timestamp included.
 The MSG might not end up being graphed... :P but Grafana for instance supports
 Text panels. It might be nice to be able to design a Hume Tasks dashboard.
 
+`humed` exposes a simple HTTP endpoint at `/metrics` which provides
+Prometheus-formatted statistics.  When the optional `token` setting is
+defined under the `metrics` section of the configuration, requests must
+include an `Authorization` header with the value `Bearer <token>` in order
+to retrieve the metrics.
+
 * mailx drop-in replacement
 
 unattended-upgrades and other packages send mail notifications using mailx. Write

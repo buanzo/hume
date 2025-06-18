@@ -21,7 +21,7 @@ This document outlines the main coding tasks required to implement the SaaS orie
 - [x] Allow per-task Slack channel mapping and support multiple simultaneous transfer methods via the plugin system.
 
 ## 4. SaaS Service
-- [ ] Build a server component exposing a REST API to collect events from `humed` instances.
+- [x] Build a server component exposing a REST API to collect events from `humed` instances.
 - [ ] Provide authentication tokens for agents and store incoming events in a central database.
 - [ ] Develop a web dashboard to list and filter stored events.
 - [ ] Extend `humed` so it can forward events to the SaaS API in addition to local transports.

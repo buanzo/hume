@@ -162,6 +162,11 @@ defined under the `metrics` section of the configuration, requests must
 include an `Authorization` header with the value `Bearer <token>` in order
 to retrieve the metrics.
 
+The daemon can also require an authentication token from `hume` clients. Set
+`auth_token` at the top level of `humed`'s configuration and pass the same value
+using the `--auth-token` option (or `HUME_TOKEN` environment variable) when
+invoking `hume`.
+
 * mailx drop-in replacement
 
 unattended-upgrades and other packages send mail notifications using mailx. Write

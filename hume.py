@@ -43,6 +43,7 @@ class Hume():
             self.extra = {}
 
         self.verbose = valueOrDefault(args, 'verbose', False)
+        self.token = valueOrDefault(args, "token", None)
 
         # Prepare object to send
         # Might end up moving some of this stuff around
@@ -50,6 +51,8 @@ class Hume():
         # in such a way that the code can grow organically
         # and be coder-assistive
         self.reqObj = {}
+        if self.token:
+            self.reqObj["token"] = self.token
         # To store information related to how hume was executed
         self.reqObj['process'] = {}
         # Hume-specific information
@@ -246,6 +249,10 @@ envvar contents are appended.''')
                         action=NotImplementedAction,
                         dest='encrypt_to',
                         help="[OPTIONAL] Encrypt to this gpg pubkey id")
+    parser.add_argument('--auth-token',
+                        default=envOrDefault('HUME_TOKEN', ''),
+                        dest='token',
+                        help='Authentication token for humed. Defaults to HUME_TOKEN envvar')
     parser.add_argument('--recv-timeout',
                         default=int(envOrDefault('HUME_RECVTIMEOUT', 1000)),
                         type=int,

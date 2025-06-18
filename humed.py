@@ -109,6 +109,7 @@ config_template = {  # TODO: add debug. check confuse.Bool()
         'port': confuse.Integer(),
         'token': confuse.Optional(confuse.String()),
     },
+    'auth_token': confuse.Optional(confuse.String()),
 }
 
 # Merge plugin-provided configuration templates
@@ -147,6 +148,10 @@ class Humed():
             self.metrics_token = config['metrics']['token'].get()
         except Exception:
             self.metrics_token = None
+        try:
+            self.auth_token = config['auth_token'].get()
+        except Exception:
+            self.auth_token = None
         self.status = {}
         self.metrics_server = None
         # Queue and Worker
@@ -639,6 +644,12 @@ class Humed():
 
         return True
 
+    def check_auth_token(self, msg):
+        """Return True if message token matches configured auth token."""
+        if not self.auth_token:
+            return True
+        return msg.get('token') == self.auth_token
+
     def update_status(self, hume):
         """Store last known status per host/task"""
         try:
@@ -736,10 +747,14 @@ class Humed():
                 printerr('CTRL-C called, exiting now')
                 sys.exit(255)
             else:
+                if not self.check_auth_token(hume):
+                    sock.send_string('AUTHFAIL')
+                    continue
                 # TODO: validate hume HERE and provide response accordingly
                 # CLient MAY timeout before this happens so this SHOULD
                 # NOT affect be a deal breaker
                 sock.send_string('OK')
+                hume.pop('token', None)
                 if self.is_valid_hume(hume):
                     rowid = self.add_transfer(hume)  # TODO: verify ret
                     if self.debug:

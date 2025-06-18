@@ -35,6 +35,7 @@ class TestHumeCLI(unittest.TestCase):
             append_pstree=False,
             tags=['a', 'b'],
             encrypt_to=None,
+            token=None,
             recvtimeout=1000,
             hostname='example.com',
             extra=None,
@@ -46,6 +47,24 @@ class TestHumeCLI(unittest.TestCase):
         self.assertEqual(pkt['hume']['hostname'], 'example.com')
         self.assertEqual(pkt['hume']['tags'], ['a', 'b'])
         self.assertEqual(pkt['hume']['msg'], 'hello')
+
+    def test_auth_token_included(self):
+        args = SimpleNamespace(
+            verbose=False,
+            level='info',
+            humecmd='',
+            task='TASK1',
+            append_pstree=False,
+            tags=[],
+            encrypt_to=None,
+            token='secret',
+            recvtimeout=1000,
+            hostname='host',
+            extra=None,
+            msg='hello'
+        )
+        h = Hume(args)
+        self.assertEqual(h.reqObj['token'], 'secret')
 
 if __name__ == '__main__':
     unittest.main()
